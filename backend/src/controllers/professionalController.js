@@ -75,7 +75,7 @@ export async function registerProfessional(req, res, next) {
     res.cookie('anon_pro_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
@@ -121,7 +121,7 @@ export async function loginProfessional(req, res, next) {
     res.cookie('anon_pro_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
@@ -175,7 +175,7 @@ export async function logoutProfessional(req, res) {
     res.clearCookie('anon_pro_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax'
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
     });
     res.json({ success: true, message: 'Professional logged out and token revoked.' });
   } catch (err) {

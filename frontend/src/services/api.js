@@ -37,8 +37,11 @@ export function generateClientCryptoCode(length = 7) {
   return Math.random().toString(36).substring(2, 2 + length);
 }
 
+const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+
 export async function request(endpoint, options = {}) {
-  const url = endpoint.startsWith('http') ? endpoint : `/api${endpoint}`;
+  const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}/api${path}`;
 
   const headers = {
     'Content-Type': 'application/json',

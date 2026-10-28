@@ -76,7 +76,7 @@ export async function adminLogin(req, res, next) {
     res.cookie('anon_admin_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000
     });
 
@@ -128,7 +128,7 @@ export async function adminLogout(req, res) {
     res.clearCookie('anon_admin_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax'
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
     });
     res.json({ success: true, message: 'Admin session ended and token revoked.' });
   } catch (err) {

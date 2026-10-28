@@ -56,7 +56,8 @@ export default function ListeningRoomLivePage() {
 
           if (isCancelled) return;
 
-          localSocket = io({
+          const socketUrl = import.meta.env.VITE_API_URL || undefined;
+          localSocket = io(socketUrl, {
             withCredentials: true,
             transports: ['websocket', 'polling']
           });

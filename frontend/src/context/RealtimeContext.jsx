@@ -154,7 +154,8 @@ export function RealtimeProvider({ children }) {
 
   // Initialize and maintain shared socket connection
   useEffect(() => {
-    const socket = io({
+    const socketUrl = import.meta.env.VITE_API_URL || undefined;
+    const socket = io(socketUrl, {
       withCredentials: true,
       transports: ['websocket', 'polling']
     });
