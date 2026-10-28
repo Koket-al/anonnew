@@ -2,6 +2,7 @@ import express from 'express';
 import {
   registerProfessional,
   loginProfessional,
+  logoutProfessional,
   getProfessionalProfile,
   updateProfessionalProfile,
   listVerifiedProfessionals,
@@ -23,6 +24,7 @@ router.get('/directory', listVerifiedProfessionals);
 // Professional account actions
 router.post('/register', postRateLimiter, registerProfessional);
 router.post('/login', postRateLimiter, loginProfessional);
+router.post('/logout', logoutProfessional);
 router.get('/me', requireProfessionalAuth, getProfessionalProfile);
 router.patch('/me', requireProfessionalAuth, updateProfessionalProfile);
 router.get('/consultations', requireProfessionalAuth, getConsultationsForProfessional);

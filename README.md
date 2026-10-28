@@ -101,7 +101,7 @@ cp backend/.env.example backend/.env
 | `MONGODB_URI` | MongoDB connection URI | `mongodb://127.0.0.1:27017/anon_db` |
 | `SESSION_SECRET` | Secret used to sign cookies | `dev_session_secret_32bytes_min` |
 | `JWT_SECRET` | Secret used for professional tokens | `dev_jwt_secret_32bytes_min` |
-| `MODERATOR_SECRET` | Passphrase to access Moderation Console | `dev_moderator_secret_passphrase` |
+| `MODERATOR_SECRET` | (Removed — moderator auth now uses server-side role on anonymous identity) | N/A |
 | `CLIENT_ORIGIN` | Allowed CORS frontend origin | `http://localhost:5173` |
 | `AI_PROVIDER` | AI provider adapter (`gemini`, `openai`, `none`) | `gemini` |
 | `AI_API_KEY` | API Key for external AI service (optional) | *Leave blank or add key* |
@@ -192,7 +192,7 @@ npm test
 
 ### G. Clinician & Moderation Portals
 - **Clinicians**: Visit `/portal/pro` to register with professional credentials or sign in to respond to anonymous youth inquiries.
-- **Moderators**: Visit `/portal/mod` and enter the default passphrase `dev_moderator_secret_passphrase`. Review pending content reports and approve/reject pending clinicians.
+- **Moderators**: Visit `/portal/mod`. Access is granted server-side to anonymous identities with the `isModerator` role assigned by a platform administrator via the admin dashboard. Review pending content reports and approve/reject pending clinicians.
 
 ---
 

@@ -1,6 +1,18 @@
 import jwt from 'jsonwebtoken';
 import { ProfessionalAccount } from '../models/ProfessionalAccount.js';
 
+/**
+ * Returns the JWT secret from environment.
+ * Throws if not configured, preventing any insecure fallback.
+ */
+function getJwtSecret() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error('[SECURITY] JWT_SECRET environment variable is missing or too short (must be ≥32 chars).');
+  }
+  return secret;
+}
+
 export async function requireProfessionalAuth(req, res, next) {
   try {
     let token = req.cookies?.anon_pro_token;
@@ -15,10 +27,17 @@ export async function requireProfessionalAuth(req, res, next) {
       });
     }
 
-    const secret = process.env.JWT_SECRET || 'dev_jwt_secret_replace_in_production_32bytes_min';
+    let secret;
+    try {
+      secret = getJwtSecret();
+    } catch {
+      return res.status(500).json({ success: false, error: 'Server authentication configuration error.' });
+    }
+
     let decoded;
     try {
-      decoded = jwt.verify(token, secret);
+      // algorithms: ['HS256'] prevents algorithm confusion attacks
+      decoded = jwt.verify(token, secret, { algorithms: ['HS256'] });
     } catch {
       return res.status(401).json({
         success: false,
@@ -26,6 +45,15 @@ export async function requireProfessionalAuth(req, res, next) {
       });
     }
 
+    // Verify token has expected professional role claim
+    if (decoded.role !== 'professional') {
+      return res.status(403).json({
+        success: false,
+        error: 'Token is not a professional credential.'
+      });
+    }
+
+    // Retrieve professional from DB — do not trust the token payload for authorization
     const professional = await ProfessionalAccount.findById(decoded.id).select('-passwordHash');
     if (!professional) {
       return res.status(401).json({

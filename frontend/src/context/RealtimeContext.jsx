@@ -159,6 +159,7 @@ export function RealtimeProvider({ children }) {
 
     const socket = io({
       auth: { token },
+      withCredentials: true,
       transports: ['websocket', 'polling']
     });
 

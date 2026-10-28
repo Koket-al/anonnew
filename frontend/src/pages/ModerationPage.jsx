@@ -24,9 +24,8 @@ import {
 
 export default function ModerationPage() {
   const { showToast, showConfirm } = useRealtime();
-  const [moderatorSecret, setModeratorSecret] = useState(
-    sessionStorage.getItem('anon_mod_secret') || ''
-  );
+  // No shared passphrase — authentication uses the anonymous session cookie.
+  // Backend verifies isModerator flag server-side.
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [activeTab, setActiveTab] = useState('reports'); // 'reports' or 'professionals'
 
@@ -36,45 +35,37 @@ export default function ModerationPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (moderatorSecret) {
-      loadModerationData();
-    }
-  }, [moderatorSecret, activeTab]);
+    loadModerationData();
+  }, [activeTab]);
 
   async function loadModerationData() {
     setLoading(true);
     setError(null);
     try {
       if (activeTab === 'reports') {
-        const res = await getModerationReports(moderatorSecret, { status: 'pending' });
+        const res = await getModerationReports({ status: 'pending' });
         if (res.reports) {
           setReports(res.reports);
           setIsUnlocked(true);
-          sessionStorage.setItem('anon_mod_secret', moderatorSecret);
         }
       } else if (activeTab === 'professionals') {
-        const res = await getPendingProfessionalsModeration(moderatorSecret);
+        const res = await getPendingProfessionalsModeration();
         if (res.professionals) {
           setPendingPros(res.professionals);
           setIsUnlocked(true);
         }
       }
     } catch (err) {
-      setError(err.message || 'Access denied. Incorrect moderator credentials.');
+      setError(err.message || 'Access denied. Your identity does not have moderator permissions.');
       setIsUnlocked(false);
     } finally {
       setLoading(false);
     }
   }
 
-  function handleUnlock(e) {
-    e.preventDefault();
-    loadModerationData();
-  }
-
   async function handleDismiss(reportId) {
     try {
-      await resolveModerationReport(moderatorSecret, reportId, { action: 'dismiss', resolutionNotes: 'Reviewed and dismissed by moderator.' });
+      await resolveModerationReport(reportId, { action: 'dismiss', resolutionNotes: 'Reviewed and dismissed by moderator.' });
       setReports(reports.filter(r => r.id !== reportId));
       showToast('Report dismissed.', 'info');
     } catch (err) {
@@ -89,12 +80,12 @@ export default function ModerationPage() {
     );
     if (!confirmed) return;
     try {
-      await removeModerationContent(moderatorSecret, {
+      await removeModerationContent({
         targetType: report.targetType,
         targetId: report.targetId,
         reason: report.reason
       });
-      await resolveModerationReport(moderatorSecret, report.id, {
+      await resolveModerationReport(report.id, {
         action: 'take_action',
         resolutionNotes: 'Content removed for community safety violations.'
       });
@@ -113,7 +104,7 @@ export default function ModerationPage() {
     if (!confirmed) return;
 
     try {
-      await reviewProfessionalVerificationModeration(moderatorSecret, proId, {
+      await reviewProfessionalVerificationModeration(proId, {
         decision,
         notes: `Official license credential reviewed - ${decision}ed by moderator.`
       });
@@ -123,6 +114,7 @@ export default function ModerationPage() {
       showToast(err.message || 'Verification update failed.', 'error');
     }
   }
+
 
   return (
     <div className="home-page-container crowd-page-container">
@@ -162,9 +154,7 @@ export default function ModerationPage() {
                 type="button"
                 className="crowd-pill-btn"
                 onClick={() => {
-                  sessionStorage.removeItem('anon_mod_secret');
                   setIsUnlocked(false);
-                  setModeratorSecret('');
                 }}
               >
                 <Lock size={13} />
@@ -191,7 +181,7 @@ export default function ModerationPage() {
       </section>
 
       {!isUnlocked ? (
-        /* Moderator Passphrase Screen */
+        /* Access denied / loading screen — no passphrase form */
         <div style={{ maxWidth: 460, margin: '20px auto' }}>
           <div className="crowd-card" style={{ padding: '32px 36px', textAlign: 'center' }}>
             <Lock size={32} style={{ opacity: 0.35, marginBottom: 12 }} />
@@ -199,7 +189,7 @@ export default function ModerationPage() {
               Authorized Moderators Only
             </h2>
             <p className="crowd-card-body" style={{ WebkitLineClamp: 'none', marginBottom: 20, fontSize: '0.85rem' }}>
-              Enter the moderator passphrase configured on the server.
+              This console is accessible to identities with moderator privileges assigned by the platform administrator.
             </p>
 
             {error && (
@@ -208,34 +198,9 @@ export default function ModerationPage() {
               </div>
             )}
 
-            <form onSubmit={handleUnlock}>
-              <div className="form-group" style={{ marginBottom: 16, textAlign: 'left' }}>
-                <label className="form-label" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: '#71717A' }}>
-                  Moderator Passphrase
-                </label>
-                <input
-                  type="password"
-                  className="form-input"
-                  placeholder="Enter secret passphrase..."
-                  value={moderatorSecret}
-                  onChange={(e) => setModeratorSecret(e.target.value)}
-                  required
-                  style={{ borderRadius: 12, padding: '10px 14px' }}
-                />
-                <div className="mono-subtle" style={{ fontSize: '0.68rem', marginTop: 6, color: '#A1A1AA' }}>
-                  Default dev key: <code>dev_moderator_secret_passphrase</code>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                className="btn-black-pill"
-                style={{ width: '100%', justifyContent: 'center' }}
-                disabled={loading}
-              >
-                <span>{loading ? 'Verifying...' : 'Unlock Moderation Console'}</span>
-              </button>
-            </form>
+            {loading && (
+              <div style={{ color: '#71717A', fontSize: '0.9rem' }}>Verifying access...</div>
+            )}
           </div>
         </div>
       ) : (

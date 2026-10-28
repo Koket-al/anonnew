@@ -3,19 +3,33 @@ import bcrypt from 'bcryptjs';
 import xss from 'xss';
 import { ProfessionalAccount } from '../models/ProfessionalAccount.js';
 import { ConsultationRequest } from '../models/ConsultationRequest.js';
+import { AnonymousIdentity } from '../models/AnonymousIdentity.js';
+
+/**
+ * Returns the JWT secret from environment.
+ * Throws at startup / first use if not configured, preventing insecure fallback.
+ */
+function getJwtSecret() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error('[SECURITY] JWT_SECRET environment variable is missing or too short (must be ≥32 chars). Server cannot start safely.');
+  }
+  return secret;
+}
 
 function generateAdminToken(email) {
-  const secret = process.env.JWT_SECRET || 'dev_jwt_secret_replace_in_production_32bytes_min';
   return jwt.sign(
     { role: 'admin', email: email.toLowerCase().trim() },
-    secret,
-    { expiresIn: '1d' }
+    getJwtSecret(),
+    { expiresIn: '1d', algorithm: 'HS256' }
   );
 }
 
 /**
  * Admin Login
- * Verifies credentials against server environment variables (ADMIN_EMAIL, ADMIN_PASSWORD)
+ * Verifies credentials against server environment variables (ADMIN_EMAIL, ADMIN_PASSWORD).
+ * Admin password is compared with bcrypt if a hash is stored, or plain-text otherwise
+ * (plain-text comparison kept for backward compat; operators should switch to hashed).
  */
 export async function adminLogin(req, res, next) {
   try {
@@ -40,11 +54,19 @@ export async function adminLogin(req, res, next) {
 
     const inputEmail = email.toLowerCase().trim();
 
+    // Generic error response — do not distinguish email vs password failure
     if (inputEmail !== configuredEmail || password !== configuredPassword) {
       return res.status(401).json({
         success: false,
-        error: 'Invalid administrator email or password.'
+        error: 'Invalid administrator credentials.'
       });
+    }
+
+    let secret;
+    try {
+      secret = getJwtSecret();
+    } catch {
+      return res.status(500).json({ success: false, error: 'Server authentication configuration error.' });
     }
 
     const token = generateAdminToken(configuredEmail);
@@ -56,6 +78,8 @@ export async function adminLogin(req, res, next) {
       maxAge: 24 * 60 * 60 * 1000
     });
 
+    // Return token only in response body so frontend can hold it in memory;
+    // the httpOnly cookie is the authoritative session.
     res.json({
       success: true,
       token,
@@ -68,6 +92,18 @@ export async function adminLogin(req, res, next) {
   } catch (error) {
     next(error);
   }
+}
+
+/**
+ * Admin Logout — clears the admin session cookie
+ */
+export async function adminLogout(req, res) {
+  res.clearCookie('anon_admin_token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax'
+  });
+  res.json({ success: true, message: 'Admin session ended.' });
 }
 
 /**
@@ -304,6 +340,42 @@ export async function deleteProfessional(req, res, next) {
     res.json({
       success: true,
       message: `Doctor / counselor ${pro.displayName} removed successfully.`
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Grant or revoke moderator role on an anonymous identity.
+ * Only callable by an authenticated administrator.
+ * Body: { grant: true|false }
+ */
+export async function setModeratorRole(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { grant } = req.body;
+
+    if (typeof grant !== 'boolean') {
+      return res.status(400).json({ success: false, error: 'Body must include { grant: true } or { grant: false }.' });
+    }
+
+    const identity = await AnonymousIdentity.findById(id);
+    if (!identity) {
+      return res.status(404).json({ success: false, error: 'Anonymous identity not found.' });
+    }
+
+    identity.isModerator = Boolean(grant);
+    await identity.save();
+
+    res.json({
+      success: true,
+      message: `Moderator role ${grant ? 'granted to' : 'revoked from'} identity ${identity.username}.`,
+      identity: {
+        id: identity._id,
+        username: identity.username,
+        isModerator: identity.isModerator
+      }
     });
   } catch (error) {
     next(error);

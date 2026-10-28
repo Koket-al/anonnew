@@ -5,8 +5,12 @@ import { ProfessionalAccount } from '../models/ProfessionalAccount.js';
 import { ConsultationRequest } from '../models/ConsultationRequest.js';
 
 function generateProToken(id) {
-  const secret = process.env.JWT_SECRET || 'dev_jwt_secret_replace_in_production_32bytes_min';
-  return jwt.sign({ id }, secret, { expiresIn: '7d' });
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error('[SECURITY] JWT_SECRET environment variable is missing or too short.');
+  }
+  // Include role claim so professionalAuth can verify token scope
+  return jwt.sign({ id, role: 'professional' }, secret, { expiresIn: '7d', algorithm: 'HS256' });
 }
 
 export async function registerProfessional(req, res, next) {
@@ -136,6 +140,15 @@ export async function loginProfessional(req, res, next) {
   } catch (error) {
     next(error);
   }
+}
+
+export async function logoutProfessional(req, res) {
+  res.clearCookie('anon_pro_token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax'
+  });
+  res.json({ success: true, message: 'Professional logged out.' });
 }
 
 export async function getProfessionalProfile(req, res) {

@@ -32,6 +32,14 @@ export function errorHandler(err, req, res, next) {
     });
   }
 
+  // Handle CORS errors
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({
+      success: false,
+      error: 'Not allowed by CORS.'
+    });
+  }
+
   const statusCode = err.statusCode || err.status || 500;
   const message = statusCode === 500 
     ? 'An unexpected error occurred. Please try again later.' 

@@ -185,6 +185,21 @@ export async function getCommunity(req, res, next) {
       }
     }
 
+    // Private communities: only members may see full details
+    if (community.isPrivate && !isMember) {
+      return res.status(403).json({
+        success: false,
+        error: 'This is a private community. You must be a member to view it.',
+        community: {
+          id: community._id,
+          name: community.name,
+          slug: community.slug,
+          isPrivate: true,
+          memberCount: community.memberCount
+        }
+      });
+    }
+
     res.json({
       success: true,
       community: {

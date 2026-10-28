@@ -21,15 +21,42 @@ import professionalRoutes from './routes/professionalRoutes.js';
 import moderationRoutes from './routes/moderationRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 
+// ── Production secret validation ─────────────────────────────────────────────
+// Fail fast if required secrets are missing or clearly unsafe in production.
+if (process.env.NODE_ENV === 'production') {
+  const requiredSecrets = ['JWT_SECRET', 'SESSION_SECRET'];
+  const insecureDefaults = [
+    'dev_jwt_secret_replace_in_production_32bytes_min',
+    'dev_session_secret_replace_in_production_32bytes_min'
+  ];
+
+  for (const key of requiredSecrets) {
+    const value = process.env[key];
+    if (!value || value.length < 32) {
+      console.error(`[FATAL] ${key} is missing or too short (< 32 chars). Server refuses to start in production without a secure secret.`);
+      process.exit(1);
+    }
+    if (insecureDefaults.includes(value)) {
+      console.error(`[FATAL] ${key} is set to a known public development default. Replace it with a cryptographically strong production secret.`);
+      process.exit(1);
+    }
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 const app = express();
 const server = http.createServer(app);
 
-const clientOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
+const rawClientOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
+const allowedOrigins = rawClientOrigin
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
 
 // Socket.io initialization with CORS
 const io = new Server(server, {
   cors: {
-    origin: clientOrigin,
+    origin: allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins,
     credentials: true
   }
 });
@@ -42,9 +69,32 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: clientOrigin,
+  origin: (origin, callback) => {
+    // Allow non-browser requests (e.g. mobile, tests, curl without Origin header)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    const err = new Error('Not allowed by CORS');
+    err.status = 403;
+    return callback(err);
+  },
   credentials: true
 }));
+
+// CSRF Origin validation for state-changing browser requests
+app.use((req, res, next) => {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    const origin = req.headers.origin;
+    if (origin && !allowedOrigins.includes(origin)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden: Cross-site request rejected.'
+      });
+    }
+  }
+  next();
+});
 
 app.use(cookieParser(process.env.SESSION_SECRET));
 app.use(express.json({ limit: '1mb' }));
@@ -85,7 +135,7 @@ async function startServer() {
   return new Promise((resolve) => {
     server.listen(PORT, () => {
       console.log(`[Server] ANON API running on http://localhost:${PORT}`);
-      console.log(`[Server] Allowed CORS Origin: ${clientOrigin}`);
+      console.log(`[Server] Allowed CORS Origin: ${allowedOrigins.join(', ')}`);
       resolve(server);
     });
   });

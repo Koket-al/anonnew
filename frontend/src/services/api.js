@@ -1,39 +1,33 @@
 /**
  * Unified API Client for ANON
- * Interacts with backend via Fetch API using credentials (cookies)
- * and optional in-memory / session token headers.
+ * Interacts with backend via Fetch API using credentials (cookies).
+ *
+ * Security notes:
+ * - Anonymous session tokens are held only in memory (not localStorage/sessionStorage).
+ *   The authoritative copy is the httpOnly cookie set by the backend.
+ *   The in-memory copy is sent as x-anon-token for non-cookie-capable paths and
+ *   for Socket.IO auth; it is never persisted to browser storage.
+ * - Admin tokens are held only in memory.  The httpOnly cookie is authoritative.
+ * - Moderator authentication uses the same anonymous session cookie/token —
+ *   the moderator role is verified server-side via the isModerator field on the identity.
+ *   No shared passphrase is sent from the client.
  */
 
+// In-memory only — never written to localStorage or sessionStorage
 let inMemoryToken = null;
 let inMemoryAdminToken = null;
 
 const CRYPTO_CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
+/**
+ * Stores the admin JWT in memory only.
+ * The httpOnly cookie set by the backend is the authoritative session carrier.
+ */
 export function setAdminToken(token) {
-  inMemoryAdminToken = token;
-  if (token) {
-    try {
-      localStorage.setItem('anon_admin_token', token);
-    } catch {
-      // Ignore
-    }
-  } else {
-    try {
-      localStorage.removeItem('anon_admin_token');
-    } catch {
-      // Ignore
-    }
-  }
+  inMemoryAdminToken = token || null;
 }
 
 export function getAdminToken() {
-  if (!inMemoryAdminToken) {
-    try {
-      inMemoryAdminToken = localStorage.getItem('anon_admin_token');
-    } catch {
-      // Ignore
-    }
-  }
   return inMemoryAdminToken;
 }
 
@@ -53,33 +47,17 @@ export function generateClientCryptoCode(length = 7) {
   return Math.random().toString(36).substring(2, 2 + length);
 }
 
+/**
+ * Stores the anonymous session token in memory only.
+ * The backend sets an httpOnly cookie; the in-memory copy is used for:
+ *   - Socket.IO handshake auth (cookies are not sent there by default)
+ *   - Fallback header for non-SPA / pre-cookie environments
+ */
 export function setApiToken(token) {
-  inMemoryToken = token;
-  if (token) {
-    try {
-      localStorage.setItem('anon_session_token_backup', token);
-      sessionStorage.setItem('anon_session_token_backup', token);
-    } catch {
-      // Ignore storage errors in restricted contexts
-    }
-  } else {
-    try {
-      localStorage.removeItem('anon_session_token_backup');
-      sessionStorage.removeItem('anon_session_token_backup');
-    } catch {
-      // Ignore
-    }
-  }
+  inMemoryToken = token || null;
 }
 
 export function getApiToken() {
-  if (!inMemoryToken) {
-    try {
-      inMemoryToken = localStorage.getItem('anon_session_token_backup') || sessionStorage.getItem('anon_session_token_backup');
-    } catch {
-      // Ignore
-    }
-  }
   return inMemoryToken;
 }
 
@@ -91,21 +69,22 @@ export async function request(endpoint, options = {}) {
     ...(options.headers || {})
   };
 
+  // Send in-memory session token as header (complements the httpOnly cookie)
   const token = getApiToken();
   if (token && !headers['x-anon-token']) {
     headers['x-anon-token'] = token;
   }
 
+  // Admin token: rely on httpOnly cookie; also send in Authorization header if held in memory
   const adminToken = getAdminToken();
-  if (adminToken && !headers['x-admin-token'] && !headers['authorization']) {
-    headers['x-admin-token'] = adminToken;
+  if (adminToken && !headers['authorization']) {
     headers['authorization'] = `Bearer ${adminToken}`;
   }
 
   const response = await fetch(url, {
     ...options,
     headers,
-    credentials: 'include' // Sends cookies
+    credentials: 'include' // Sends httpOnly cookies
   });
 
   const contentType = response.headers.get('content-type');
@@ -399,6 +378,12 @@ export async function loginProfessional(payload) {
   });
 }
 
+export async function logoutProfessional() {
+  return await request('/professionals/logout', {
+    method: 'POST'
+  });
+}
+
 export async function getProfessionalProfile() {
   return await request('/professionals/me');
 }
@@ -432,46 +417,41 @@ export async function submitReport(payload) {
   });
 }
 
-export async function getModerationReports(secret, params = {}) {
-  return await request(`/moderation/reports${buildQuery(params)}`, {
-    headers: { 'x-moderator-secret': secret }
-  });
+// Moderation endpoints authenticate via the anonymous session cookie/token.
+// The backend verifies the isModerator flag on the identity — no shared secret is sent.
+
+export async function getModerationReports(params = {}) {
+  return await request(`/moderation/reports${buildQuery(params)}`);
 }
 
-export async function resolveModerationReport(secret, id, payload) {
+export async function resolveModerationReport(id, payload) {
   return await request(`/moderation/reports/${id}/resolve`, {
     method: 'POST',
-    headers: { 'x-moderator-secret': secret },
     body: JSON.stringify(payload)
   });
 }
 
-export async function removeModerationContent(secret, payload) {
+export async function removeModerationContent(payload) {
   return await request('/moderation/content/remove', {
     method: 'POST',
-    headers: { 'x-moderator-secret': secret },
     body: JSON.stringify(payload)
   });
 }
 
-export async function suspendModerationIdentity(secret, payload) {
+export async function suspendModerationIdentity(payload) {
   return await request('/moderation/identity/suspend', {
     method: 'POST',
-    headers: { 'x-moderator-secret': secret },
     body: JSON.stringify(payload)
   });
 }
 
-export async function getPendingProfessionalsModeration(secret) {
-  return await request('/moderation/professionals/pending', {
-    headers: { 'x-moderator-secret': secret }
-  });
+export async function getPendingProfessionalsModeration() {
+  return await request('/moderation/professionals/pending');
 }
 
-export async function reviewProfessionalVerificationModeration(secret, id, payload) {
+export async function reviewProfessionalVerificationModeration(id, payload) {
   return await request(`/moderation/professionals/${id}/verify`, {
     method: 'POST',
-    headers: { 'x-moderator-secret': secret },
     body: JSON.stringify(payload)
   });
 }
@@ -486,13 +466,18 @@ export async function adminLogin({ email, password }) {
     body: JSON.stringify({ email, password })
   });
   if (res && res.token) {
+    // Keep in memory for Authorization header; httpOnly cookie is authoritative
     setAdminToken(res.token);
   }
   return res;
 }
 
 export async function adminLogout() {
-  setAdminToken(null);
+  try {
+    await request('/admin/logout', { method: 'POST' });
+  } finally {
+    setAdminToken(null);
+  }
 }
 
 export async function getAdminMe() {

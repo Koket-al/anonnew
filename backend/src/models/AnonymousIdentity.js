@@ -28,6 +28,13 @@ const anonymousIdentitySchema = new mongoose.Schema(
       type: String,
       default: ''
     },
+    // Moderator role — assigned server-side by administrator only.
+    // Never set by user self-registration.
+    isModerator: {
+      type: Boolean,
+      default: false,
+      index: true
+    },
     lastActiveAt: {
       type: Date,
       default: Date.now

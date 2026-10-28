@@ -1,9 +1,9 @@
 process.env.NODE_ENV = 'test';
 process.env.MONGODB_URI = process.env.TEST_MONGODB_URI || 'mongodb://127.0.0.1:27017/anon_test_db';
 process.env.SESSION_SECRET = 'test_session_secret_32bytes_long_string';
-process.env.MODERATOR_SECRET = 'test_mod_secret_passphrase';
-process.env.ADMIN_EMAIL = process.env.ADMIN_EMAIL ;
-process.env.ADMIN_PASSWORD = process.env.ADMIN_PASSWORD 
+process.env.JWT_SECRET = 'test_jwt_secret_32bytes_long_str_ok';
+process.env.ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+process.env.ADMIN_PASSWORD = process.env.ADMIN_PASSWORD
 
 import { test, before, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -256,13 +256,38 @@ describe('ANON Backend API Tests', () => {
   });
 
   test('12. Moderation Workflow - Review and Verify Pending Professional', async () => {
-    const secret = process.env.MODERATOR_SECRET;
+    // New auth: moderator identity uses anonymous session token, with isModerator=true set by admin.
+    // Step 1: Create a new anonymous identity for the moderator
+    const modEntryRes = await fetch(`${baseURL}/api/auth/enter`, { method: 'POST' });
+    const modEntryData = await modEntryRes.json();
+    const modToken = modEntryData.token;
+    const modIdentityId = modEntryData.identity.id;
 
+    // Step 2: Admin grants moderator role to this identity
+    const adminLoginRes = await fetch(`${baseURL}/api/admin/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD })
+    });
+    const adminData = await adminLoginRes.json();
+    assert.equal(adminLoginRes.status, 200, 'Admin login should succeed');
+
+    const grantRes = await fetch(`${baseURL}/api/admin/identities/${modIdentityId}/moderator`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminData.token}`
+      },
+      body: JSON.stringify({ grant: true })
+    });
+    assert.equal(grantRes.status, 200, 'Moderator grant should succeed');
+
+    // Step 3: Moderator verifies the professional using anonymous session token
     const verifyRes = await fetch(`${baseURL}/api/moderation/professionals/${pendingProId}/verify`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-moderator-secret': secret
+        'x-anon-token': modToken
       },
       body: JSON.stringify({
         decision: 'verify',

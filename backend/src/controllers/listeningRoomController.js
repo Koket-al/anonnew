@@ -113,17 +113,37 @@ export async function joinListeningRoom(req, res, next) {
     const { id } = req.params;
     const currentId = req.identity._id;
 
-    const room = await ListeningRoom.findById(id);
-    if (!room || room.isClosed) {
+    const existingRoom = await ListeningRoom.findById(id);
+    if (!existingRoom || existingRoom.isClosed) {
       return res.status(404).json({ success: false, error: 'Listening room not found or closed.' });
     }
 
-    if (!room.activeParticipants.some(p => p.toString() === currentId.toString())) {
-      if (room.activeParticipants.length >= room.maxParticipants) {
+    // If user is already an active participant, return success
+    if (existingRoom.activeParticipants.some(p => p.toString() === currentId.toString())) {
+      return res.json({ success: true, message: 'Joined room.' });
+    }
+
+    // Atomic join with capacity condition to prevent race conditions on concurrent joins
+    const room = await ListeningRoom.findOneAndUpdate(
+      {
+        _id: id,
+        isClosed: false,
+        activeParticipants: { $ne: currentId },
+        $expr: { $lt: [{ $size: '$activeParticipants' }, '$maxParticipants'] }
+      },
+      { $addToSet: { activeParticipants: currentId } },
+      { new: true }
+    );
+
+    if (!room) {
+      // Re-query to determine reason for failure
+      const check = await ListeningRoom.findById(id);
+      if (!check || check.isClosed) {
+        return res.status(404).json({ success: false, error: 'Listening room not found or closed.' });
+      }
+      if (check.activeParticipants.length >= check.maxParticipants) {
         return res.status(400).json({ success: false, error: 'This room is currently full.' });
       }
-      room.activeParticipants.push(currentId);
-      await room.save();
     }
 
     res.json({ success: true, message: 'Joined room.' });

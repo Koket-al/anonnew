@@ -4,6 +4,7 @@ import { useRealtime } from '../context/RealtimeContext.jsx';
 import {
   registerProfessional,
   loginProfessional,
+  logoutProfessional,
   getProfessionalProfile,
   getProfessionalConsultations,
   respondToConsultation,
@@ -534,9 +535,14 @@ export default function ProfessionalPortalPage() {
               <button
                 type="button"
                 className="crowd-pill-btn"
-                onClick={() => {
-                  sessionStorage.removeItem('anon_session_token_backup');
+                onClick={async () => {
+                  try {
+                    await logoutProfessional();
+                  } catch {
+                    // Ignore logout network error
+                  }
                   setIsLoggedIn(false);
+                  setProfile(null);
                 }}
               >
                 Sign Out
