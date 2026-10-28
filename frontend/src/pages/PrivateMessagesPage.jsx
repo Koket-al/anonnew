@@ -9,8 +9,7 @@ import {
   respondToConversationRequest,
   blockUser,
   closeConversation,
-  deleteMessage,
-  getApiToken
+  deleteMessage
 } from '../services/api.js';
 import ReportModal from '../components/ReportModal.jsx';
 import { io } from 'socket.io-client';

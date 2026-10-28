@@ -1,4 +1,6 @@
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+import { RevokedToken } from '../models/RevokedToken.js';
 
 /**
  * Returns the JWT secret from environment.
@@ -16,8 +18,9 @@ function getJwtSecret() {
  * Middleware to protect Admin endpoints.
  * Requires a valid JWT token with role='admin' issued to the configured admin email.
  * Algorithm is explicitly restricted to HS256 — the 'none' algorithm attack is prevented.
+ * Verifies active session state against server-side revocation on logout.
  */
-export function requireAdminAuth(req, res, next) {
+export async function requireAdminAuth(req, res, next) {
   try {
     let token = null;
 
@@ -34,6 +37,16 @@ export function requireAdminAuth(req, res, next) {
       return res.status(401).json({
         success: false,
         error: 'Admin authorization required.'
+      });
+    }
+
+    // Verify token has not been revoked server-side on logout
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const isRevoked = await RevokedToken.findOne({ tokenHash });
+    if (isRevoked) {
+      return res.status(401).json({
+        success: false,
+        error: 'Admin session has been logged out and revoked. Please log in again.'
       });
     }
 

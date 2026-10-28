@@ -24,15 +24,38 @@ import jwt from 'jsonwebtoken';
 import { io as ClientIO } from 'socket.io-client';
 import { server } from '../src/server.js';
 import { connectDB } from '../src/config/db.js';
+import { Community } from '../src/models/Community.js';
+import { ProfessionalAccount } from '../src/models/ProfessionalAccount.js';
 
 let baseURL;
 let testServer;
+
+// Global fetch wrapper for test suite API calls
+const rawFetch = globalThis.fetch;
+globalThis.fetch = (url, options = {}) => {
+  const headers = new Headers(options.headers || {});
+  if (!headers.has('x-api-client')) {
+    headers.set('x-api-client', 'true');
+  }
+  return rawFetch(url, { ...options, headers });
+};
+
+async function safeDropDatabase() {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Refusing to drop database in production environment!');
+  }
+  const dbName = mongoose.connection.name || '';
+  if (!dbName.toLowerCase().includes('test')) {
+    throw new Error(`Refusing to drop database '${dbName}': database name must contain 'test'!`);
+  }
+  await mongoose.connection.dropDatabase();
+}
 
 before(async () => {
   if (mongoose.connection.readyState === 0) {
     await connectDB();
   }
-  await mongoose.connection.dropDatabase().catch(() => {});
+  await safeDropDatabase().catch(() => {});
   await new Promise((resolve) => {
     testServer = server.listen(0, () => {
       const port = testServer.address().port;
@@ -43,7 +66,7 @@ before(async () => {
 });
 
 after(async () => {
-  await mongoose.connection.dropDatabase().catch(() => {});
+  await safeDropDatabase().catch(() => {});
   await new Promise((resolve) => testServer.close(resolve));
   await mongoose.disconnect();
 });
@@ -824,5 +847,721 @@ describe('Security: Listening Rooms', () => {
         reject(new Error('Guest interaction timed out'));
       }, 2500);
     });
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// PASS 2 SECURITY REGRESSION TEST SUITES
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('Pass 2: Private Community Post Broadcast Isolation', () => {
+  let owner, nonMember, privateComm, publicComm;
+  let ownerSocket, nonMemberSocket, unauthSocket;
+
+  before(async () => {
+    owner = await createUser();
+    nonMember = await createUser();
+
+    const privRes = await fetch(`${baseURL}/api/communities`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-anon-token': owner.token },
+      body: JSON.stringify({
+        name: `PrivComm-${Date.now()}`,
+        description: 'Private broadcast test',
+        topic: 'Mental Wellness',
+        isPrivate: true
+      })
+    });
+    const privData = await privRes.json();
+    privateComm = privData.community;
+
+    const pubRes = await fetch(`${baseURL}/api/communities`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-anon-token': owner.token },
+      body: JSON.stringify({
+        name: `PubComm-${Date.now()}`,
+        description: 'Public broadcast test',
+        topic: 'General Health',
+        isPrivate: false
+      })
+    });
+    const pubData = await pubRes.json();
+    publicComm = pubData.community;
+  });
+
+  after(() => {
+    ownerSocket?.disconnect();
+    nonMemberSocket?.disconnect();
+    unauthSocket?.disconnect();
+  });
+
+  test('BROADCAST-01: Private community post, replies, and reactions do not leak to posts_stream', async () => {
+    ownerSocket = createSocketClient(owner.token);
+    nonMemberSocket = createSocketClient(nonMember.token);
+    unauthSocket = createSocketClient(null);
+
+    await new Promise((resolve) => {
+      let count = 0;
+      const done = () => { count++; if (count === 3) resolve(); };
+      ownerSocket.on('connect', done);
+      nonMemberSocket.on('connect', done);
+      unauthSocket.on('connect', done);
+    });
+
+    ownerSocket.emit('join_community', { communityId: privateComm.id });
+    nonMemberSocket.emit('join_stream');
+    unauthSocket.emit('join_stream');
+
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    let unauthGotPost = false;
+    let nonMemberGotPost = false;
+    let ownerGotPost = false;
+
+    unauthSocket.on('new_post', (p) => {
+      if (p.title === 'Secret Private Question') unauthGotPost = true;
+    });
+    nonMemberSocket.on('new_post', (p) => {
+      if (p.title === 'Secret Private Question') nonMemberGotPost = true;
+    });
+    ownerSocket.on('new_post', (p) => {
+      if (p.title === 'Secret Private Question') ownerGotPost = true;
+    });
+
+    const postRes = await fetch(`${baseURL}/api/posts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-anon-token': owner.token },
+      body: JSON.stringify({
+        title: 'Secret Private Question',
+        content: 'Confidential symptoms discussed only within private community',
+        communityId: privateComm.id,
+        category: 'Mental Wellness'
+      })
+    });
+    assert.equal(postRes.status, 201);
+    const postData = await postRes.json();
+    const privPostId = postData.post.id;
+
+    await new Promise((resolve) => setTimeout(resolve, 350));
+
+    assert.equal(ownerGotPost, true, 'Authorized member should receive post in community room');
+    assert.equal(unauthGotPost, false, 'Unauthenticated socket on posts_stream must NOT receive private post');
+    assert.equal(nonMemberGotPost, false, 'Non-member socket on posts_stream must NOT receive private post');
+
+    // Test reply isolation
+    let unauthGotUpdate = false;
+    unauthSocket.on('post_updated', (u) => {
+      if (u.id === privPostId) unauthGotUpdate = true;
+    });
+
+    await fetch(`${baseURL}/api/posts/${privPostId}/reply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-anon-token': owner.token },
+      body: JSON.stringify({ content: 'Private reply from member' })
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    assert.equal(unauthGotUpdate, false, 'Private reply must NOT broadcast to posts_stream');
+
+    // Test reaction isolation
+    let unauthGotReaction = false;
+    unauthSocket.on('post_reaction', (r) => {
+      if (r.id === privPostId) unauthGotReaction = true;
+    });
+
+    await fetch(`${baseURL}/api/posts/${privPostId}/been-through-this`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-anon-token': owner.token }
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    assert.equal(unauthGotReaction, false, 'Private reaction must NOT broadcast to posts_stream');
+  });
+
+  test('BROADCAST-02: Public standalone post broadcasts to posts_stream', async () => {
+    let unauthGotPublicPost = false;
+    unauthSocket.on('new_post', (p) => {
+      if (p.title === 'Public Discussion Topic') unauthGotPublicPost = true;
+    });
+
+    const res = await fetch(`${baseURL}/api/posts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-anon-token': owner.token },
+      body: JSON.stringify({
+        title: 'Public Discussion Topic',
+        content: 'This public question is open for everyone to read',
+        category: 'General Health'
+      })
+    });
+    assert.equal(res.status, 201);
+
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    assert.equal(unauthGotPublicPost, true, 'Public standalone post must broadcast to posts_stream');
+  });
+});
+
+describe('Pass 2: Enforce Private Community Admission Rules and Metadata Protection', () => {
+  let owner, applicant, outsider, privateCommunity, publicCommunity;
+
+  before(async () => {
+    owner = await createUser();
+    applicant = await createUser();
+    outsider = await createUser();
+
+    const privRes = await fetch(`${baseURL}/api/communities`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-anon-token': owner.token },
+      body: JSON.stringify({
+        name: `AdmissionsPrivComm-${Date.now()}`,
+        description: 'Private community for testing admissions',
+        topic: 'Trauma & Recovery',
+        isPrivate: true
+      })
+    });
+    const privData = await privRes.json();
+    privateCommunity = privData.community;
+
+    const pubRes = await fetch(`${baseURL}/api/communities`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-anon-token': owner.token },
+      body: JSON.stringify({
+        name: `AdmissionsPubComm-${Date.now()}`,
+        description: 'Public community for testing admissions',
+        topic: 'General Health',
+        isPrivate: false
+      })
+    });
+    const pubData = await pubRes.json();
+    publicCommunity = pubData.community;
+  });
+
+  test('ADMIT-01: Direct self-join to private community is rejected with 403', async () => {
+    const res = await fetch(`${baseURL}/api/communities/${privateCommunity.id}/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-anon-token': outsider.token }
+    });
+    assert.equal(res.status, 403);
+    const data = await res.json();
+    assert.equal(data.success, false);
+    assert.ok(data.error.includes('private community') && data.error.includes('invitation code'));
+  });
+
+  test('ADMIT-02: Non-member cannot view private community metadata (returns 403 and omits details)', async () => {
+    const res = await fetch(`${baseURL}/api/communities/${privateCommunity.id}`, {
+      headers: { 'x-anon-token': outsider.token }
+    });
+    assert.equal(res.status, 403);
+    const data = await res.json();
+    assert.equal(data.success, false);
+    assert.equal(data.community, undefined, 'Community metadata must be withheld from non-members');
+  });
+
+  test('ADMIT-03: Join request workflow allows owner to review and admit members', async () => {
+    // 1. Applicant submits join request
+    const reqRes = await fetch(`${baseURL}/api/communities/${privateCommunity.id}/request-access`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-anon-token': applicant.token },
+      body: JSON.stringify({ note: 'I would like to participate in this support group.' })
+    });
+    assert.equal(reqRes.status, 201);
+    const reqData = await reqRes.json();
+    assert.equal(reqData.success, true);
+
+    // 2. Owner lists pending requests
+    const listRes = await fetch(`${baseURL}/api/communities/${privateCommunity.id}/requests`, {
+      headers: { 'x-anon-token': owner.token }
+    });
+    assert.equal(listRes.status, 200);
+    const listData = await listRes.json();
+    assert.ok(listData.requests.length >= 1);
+    const pendingReq = listData.requests.find(r => r.identity.id === applicant.identity.id);
+    assert.ok(pendingReq);
+
+    // 3. Owner approves request
+    const reviewRes = await fetch(`${baseURL}/api/communities/${privateCommunity.id}/requests/${pendingReq.id}/review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-anon-token': owner.token },
+      body: JSON.stringify({ action: 'approve' })
+    });
+    assert.equal(reviewRes.status, 200);
+
+    // 4. Now applicant can access private community details
+    const memberGetRes = await fetch(`${baseURL}/api/communities/${privateCommunity.id}`, {
+      headers: { 'x-anon-token': applicant.token }
+    });
+    assert.equal(memberGetRes.status, 200);
+    const memberGetData = await memberGetRes.json();
+    assert.equal(memberGetData.success, true);
+    assert.ok(memberGetData.community.name);
+  });
+
+  test('ADMIT-04: Joining private community with valid inviteCode succeeds', async () => {
+    const inviteUser = await createUser();
+
+    const joinRes = await fetch(`${baseURL}/api/communities/${privateCommunity.id}/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-anon-token': inviteUser.token },
+      body: JSON.stringify({ inviteCode: privateCommunity.inviteCode })
+    });
+    assert.equal(joinRes.status, 200);
+    const joinData = await joinRes.json();
+    assert.equal(joinData.success, true);
+
+    // Check membership
+    const getRes = await fetch(`${baseURL}/api/communities/${privateCommunity.id}`, {
+      headers: { 'x-anon-token': inviteUser.token }
+    });
+    assert.equal(getRes.status, 200);
+  });
+
+  test('ADMIT-05: Public community allows direct self-join without invite code', async () => {
+    const pubJoinRes = await fetch(`${baseURL}/api/communities/${publicCommunity.id}/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-anon-token': outsider.token }
+    });
+    assert.equal(pubJoinRes.status, 200);
+    const pubJoinData = await pubJoinRes.json();
+    assert.equal(pubJoinData.success, true);
+  });
+});
+
+describe('Pass 2: Token Privacy in Browser JavaScript Responses and Socket Cookie Auth', () => {
+  test('TOKEN-01: Anonymous entry does not return token to browser clients (without x-api-client header)', async () => {
+    const res = await rawFetch(`${baseURL}/api/auth/enter`, { method: 'POST' });
+    assert.equal(res.status, 201);
+    const data = await res.json();
+
+    assert.equal(data.success, true);
+    assert.ok(data.identity);
+    // Token is omitted from JSON payload
+    assert.equal(data.token, undefined, 'Session token must not be returned in JSON response to browser JS');
+
+    const cookieHeader = res.headers.get('set-cookie');
+    assert.ok(cookieHeader, 'HttpOnly cookie must be set');
+    assert.ok(cookieHeader.includes('anon_session_token='));
+    assert.ok(cookieHeader.toLowerCase().includes('httponly'));
+  });
+
+  test('TOKEN-02: Admin login does not return token to browser clients and sets HttpOnly cookie', async () => {
+    const res = await rawFetch(`${baseURL}/api/admin/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD })
+    });
+    assert.equal(res.status, 200);
+    const data = await res.json();
+
+    assert.equal(data.success, true);
+    assert.ok(data.admin);
+    assert.equal(data.token, undefined, 'Admin JWT must not be exposed in JSON to browser JS');
+
+    const cookieHeader = res.headers.get('set-cookie');
+    assert.ok(cookieHeader);
+    assert.ok(cookieHeader.includes('anon_admin_token='));
+    assert.ok(cookieHeader.toLowerCase().includes('httponly'));
+  });
+
+  test('TOKEN-03: Socket.IO authenticates using anon_session_token cookie without JS token', async () => {
+    // 1. Create a user via API client to obtain valid session token
+    const user = await createUser();
+
+    // 2. Connect socket passing the cookie header directly (as a browser would via withCredentials)
+    const socket = ClientIO(baseURL, {
+      extraHeaders: {
+        Cookie: `anon_session_token=${user.token}`
+      },
+      transports: ['websocket'],
+      forceNew: true,
+      reconnection: false
+    });
+
+    await new Promise((resolve, reject) => {
+      socket.on('connect', () => {
+        // Create a listening room and join it to verify identity is attached
+        socket.emit('join_listening_room', { roomId: new mongoose.Types.ObjectId().toString() });
+      });
+      socket.on('error', (err) => {
+        // An 'Invalid room ID' or 'Room not found' means the socket authenticated and executed handler
+        socket.disconnect();
+        resolve();
+      });
+      setTimeout(() => {
+        socket.disconnect();
+        resolve();
+      }, 1000);
+    });
+  });
+});
+
+describe('Pass 2: Invalidate Stolen/Replayed JWTs on Logout (RevokedToken)', () => {
+  let adminToken, proToken;
+
+  test('REVOKE-01: Logged-out Admin JWT cannot be reused or replayed', async () => {
+    // 1. Admin login (as API client to receive token for replay test)
+    adminToken = await adminLogin();
+    assert.ok(adminToken);
+
+    // Verify token works
+    const testRes = await fetch(`${baseURL}/api/admin/me`, {
+      headers: { Authorization: `Bearer ${adminToken}` }
+    });
+    assert.equal(testRes.status, 200);
+
+    // 2. Admin logout
+    const logoutRes = await fetch(`${baseURL}/api/admin/logout`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${adminToken}` }
+    });
+    assert.equal(logoutRes.status, 200);
+
+    // 3. Stolen / replayed token after logout MUST be rejected with 401
+    const replayedRes = await fetch(`${baseURL}/api/admin/me`, {
+      headers: { Authorization: `Bearer ${adminToken}` }
+    });
+    assert.equal(replayedRes.status, 401);
+    const replayedData = await replayedRes.json();
+    assert.equal(replayedData.success, false);
+    assert.ok(replayedData.error.includes('revoked'));
+  });
+
+  test('REVOKE-02: Logged-out Professional JWT cannot be reused or replayed', async () => {
+    const proEmail = `pro-revoke-${Date.now()}@clinic.local`;
+    const proPassword = 'ValidProPass123!';
+
+    // Register & approve professional
+    const regRes = await fetch(`${baseURL}/api/professionals/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fullName: 'Dr. Revocation Test',
+        displayName: 'Dr. Revocation',
+        email: proEmail,
+        password: proPassword,
+        licenseType: 'Psychologist',
+        licenseJurisdiction: 'CA',
+        licenseNumber: `REV-${Date.now()}`,
+        specialties: ['Adolescent Psychology'],
+        bio: 'Testing revocation.'
+      })
+    });
+    assert.equal(regRes.status, 201);
+
+    const proDoc = await ProfessionalAccount.findOne({ email: proEmail });
+    assert.ok(proDoc);
+    proDoc.verificationStatus = 'verified';
+    await proDoc.save();
+
+    // Login as professional
+    const loginRes = await fetch(`${baseURL}/api/professionals/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: proEmail, password: proPassword })
+    });
+    const loginData = await loginRes.json();
+    proToken = loginData.token;
+    assert.ok(proToken);
+
+    // Verify token works
+    const meRes = await fetch(`${baseURL}/api/professionals/me`, {
+      headers: { Authorization: `Bearer ${proToken}` }
+    });
+    assert.equal(meRes.status, 200);
+
+    // Logout
+    const logoutRes = await fetch(`${baseURL}/api/professionals/logout`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${proToken}` }
+    });
+    assert.equal(logoutRes.status, 200);
+
+    // Replay after logout
+    const replayedRes = await fetch(`${baseURL}/api/professionals/me`, {
+      headers: { Authorization: `Bearer ${proToken}` }
+    });
+    assert.equal(replayedRes.status, 401);
+    const replayedData = await replayedRes.json();
+    assert.equal(replayedData.success, false);
+    assert.ok(replayedData.error.includes('revoked'));
+  });
+});
+
+describe('Pass 2: Listening Room Capacity and Resource Exhaustion', () => {
+  let hostUser, cappedRoomId;
+
+  before(async () => {
+    hostUser = await createUser();
+    const res = await fetch(`${baseURL}/api/listening-rooms`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-anon-token': hostUser.token },
+      body: JSON.stringify({
+        title: 'Capped Room Test ' + Date.now(),
+        topic: 'Stress Management',
+        description: 'Room with max 2 participants',
+        maxParticipants: 2
+      })
+    });
+    const data = await res.json();
+    cappedRoomId = data.room.id;
+  });
+
+  test('CAPACITY-01: Anonymous guests count toward room capacity and overflow is blocked', async () => {
+    const guest1 = createSocketClient(null);
+    const guest2 = createSocketClient(null);
+    const guest3 = createSocketClient(null);
+
+    try {
+      // Connect all sockets
+      await new Promise((resolve) => {
+        let connected = 0;
+        const check = () => { connected++; if (connected === 3) resolve(); };
+        guest1.on('connect', check);
+        guest2.on('connect', check);
+        guest3.on('connect', check);
+      });
+
+      // Guest 1 joins
+      await new Promise((resolve) => {
+        guest1.emit('join_listening_room', { roomId: cappedRoomId });
+        guest1.on('user_joined_room', () => resolve());
+      });
+
+      // Guest 2 joins (reaches max capacity of 2)
+      await new Promise((resolve) => {
+        guest2.emit('join_listening_room', { roomId: cappedRoomId });
+        guest2.on('user_joined_room', () => resolve());
+      });
+
+      // Guest 3 attempts to join: must receive capacity error
+      await new Promise((resolve, reject) => {
+        guest3.emit('join_listening_room', { roomId: cappedRoomId });
+        guest3.on('error', (err) => {
+          assert.ok(err.includes('capacity'), `Expected capacity error, got: ${err}`);
+          resolve();
+        });
+        setTimeout(() => reject(new Error('Guest 3 should have been rejected due to room capacity')), 2000);
+      });
+
+      // Guest 2 disconnects -> frees up capacity
+      guest2.disconnect();
+      await new Promise((resolve) => setTimeout(resolve, 250));
+
+      // Guest 3 now joins successfully
+      await new Promise((resolve, reject) => {
+        guest3.emit('join_listening_room', { roomId: cappedRoomId });
+        guest3.on('user_joined_room', () => resolve());
+        setTimeout(() => reject(new Error('Guest 3 should be able to join after guest 2 left')), 2000);
+      });
+    } finally {
+      guest1.disconnect();
+      guest2.disconnect();
+      guest3.disconnect();
+    }
+  });
+
+  test('CAPACITY-02: Rapid join attempt flooding emits join rate limit error', async () => {
+    const floodSocket = createSocketClient(null);
+    await new Promise((resolve) => floodSocket.on('connect', resolve));
+
+    let gotRateLimit = false;
+    floodSocket.on('error', (err) => {
+      if (err.includes('Too many join attempts')) {
+        gotRateLimit = true;
+      }
+    });
+
+    // Send 10 rapid join requests
+    for (let i = 0; i < 10; i++) {
+      floodSocket.emit('join_listening_room', { roomId: cappedRoomId });
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    floodSocket.disconnect();
+    assert.equal(gotRateLimit, true, 'Rapid join attempts must be rate limited');
+  });
+
+  test('CAPACITY-03: One room per socket - joining new room leaves previous room and updates participants', async () => {
+    // Create second room
+    const res2 = await fetch(`${baseURL}/api/listening-rooms`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-anon-token': hostUser.token },
+      body: JSON.stringify({
+        title: 'Room 2 ' + Date.now(),
+        topic: 'Sleep',
+        description: 'Second room'
+      })
+    });
+    const data2 = await res2.json();
+    const room2Id = data2.room.id;
+
+    const observer = createSocketClient(null);
+    const switcher = createSocketClient(null);
+
+    await new Promise((resolve) => {
+      let c = 0;
+      observer.on('connect', () => { c++; if (c === 2) resolve(); });
+      switcher.on('connect', () => { c++; if (c === 2) resolve(); });
+    });
+
+    // Both join Room 1
+    observer.emit('join_listening_room', { roomId: cappedRoomId });
+    switcher.emit('join_listening_room', { roomId: cappedRoomId });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    let observerGotLeave = false;
+    observer.on('user_left_room', () => {
+      observerGotLeave = true;
+    });
+
+    // Switcher joins Room 2
+    switcher.emit('join_listening_room', { roomId: room2Id });
+    await new Promise((resolve) => setTimeout(resolve, 350));
+
+    observer.disconnect();
+    switcher.disconnect();
+
+    assert.equal(observerGotLeave, true, 'Room 1 must be notified when a socket switches to Room 2');
+  });
+});
+
+describe('Pass 2: Revocation of Private Socket Access on Community Leave', () => {
+  test('REVOKE-COMM-01: Leaving private community evicts socket from rooms and emits access revoked', async () => {
+    const commOwner = await createUser();
+    const member = await createUser();
+
+    // Create private community
+    const cRes = await fetch(`${baseURL}/api/communities`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-anon-token': commOwner.token },
+      body: JSON.stringify({
+        name: `RevokeComm-${Date.now()}`,
+        description: 'Test revocation of sockets',
+        topic: 'General Health',
+        isPrivate: true
+      })
+    });
+    const cData = await cRes.json();
+    const commId = cData.community.id;
+
+    // Join with inviteCode
+    await fetch(`${baseURL}/api/communities/${commId}/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-anon-token': member.token },
+      body: JSON.stringify({ inviteCode: cData.community.inviteCode })
+    });
+
+    // Connect member socket
+    const memberSocket = createSocketClient(member.token);
+    await new Promise((resolve) => memberSocket.on('connect', resolve));
+
+    memberSocket.emit('join_community', { communityId: commId });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    let gotRevocationEvent = false;
+    memberSocket.on('community_access_revoked', (data) => {
+      if (data.communityId === commId) gotRevocationEvent = true;
+    });
+
+    // Member leaves community via REST API
+    const leaveRes = await fetch(`${baseURL}/api/communities/${commId}/leave`, {
+      method: 'POST',
+      headers: { 'x-anon-token': member.token }
+    });
+    assert.equal(leaveRes.status, 200);
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    memberSocket.disconnect();
+
+    assert.equal(gotRevocationEvent, true, 'User socket must receive community_access_revoked event upon leaving');
+  });
+});
+
+describe('Pass 2: Hardened CSRF and CORS Validation', () => {
+  let user;
+
+  before(async () => {
+    user = await createUser();
+  });
+
+  test('CSRF-03: Request with Origin: null is rejected with 403', async () => {
+    const res = await rawFetch(`${baseURL}/api/posts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Origin': 'null',
+        'x-anon-token': user.token
+      },
+      body: JSON.stringify({ title: 'Null Origin Test', content: 'Testing null origin', category: 'General Health' })
+    });
+    assert.equal(res.status, 403);
+    const data = await res.json();
+    assert.equal(data.success, false);
+  });
+
+  test('CSRF-04: Request with Sec-Fetch-Site: cross-site is rejected with 403', async () => {
+    const res = await rawFetch(`${baseURL}/api/posts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Sec-Fetch-Site': 'cross-site',
+        'x-anon-token': user.token
+      },
+      body: JSON.stringify({ title: 'SecFetch Test', content: 'Testing sec fetch site', category: 'General Health' })
+    });
+    assert.equal(res.status, 403);
+    const data = await res.json();
+    assert.equal(data.success, false);
+  });
+
+  test('CSRF-05: Request with cross-site Referer header is rejected with 403', async () => {
+    const res = await rawFetch(`${baseURL}/api/posts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Referer': 'https://malicious-tracker.com/phish',
+        'x-anon-token': user.token
+      },
+      body: JSON.stringify({ title: 'Referer Test', content: 'Testing referer check', category: 'General Health' })
+    });
+    assert.equal(res.status, 403);
+    const data = await res.json();
+    assert.equal(data.success, false);
+  });
+
+  test('CSRF-06: State-changing request with approved Origin succeeds', async () => {
+    const res = await rawFetch(`${baseURL}/api/posts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Origin': 'http://localhost:5173',
+        'x-anon-token': user.token,
+        'x-api-client': 'true'
+      },
+      body: JSON.stringify({ title: 'Approved Origin Test', content: 'Testing approved origin', category: 'General Health' })
+    });
+    assert.equal(res.status, 201);
+    const data = await res.json();
+    assert.equal(data.success, true);
+  });
+});
+
+describe('Pass 2: Safe Test Database Guards', () => {
+  test('SAFE-01: safeDropDatabase refuses to drop in production or if database name lacks test', async () => {
+    // 1. Production check
+    const prevEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    await assert.rejects(
+      async () => await safeDropDatabase(),
+      /production/
+    );
+    process.env.NODE_ENV = prevEnv;
+
+    // 2. Database name check
+    const originalName = mongoose.connection.name;
+    Object.defineProperty(mongoose.connection, 'name', { value: 'production_main_cluster', configurable: true });
+    await assert.rejects(
+      async () => await safeDropDatabase(),
+      /must contain 'test'/
+    );
+    Object.defineProperty(mongoose.connection, 'name', { value: originalName, configurable: true });
   });
 });

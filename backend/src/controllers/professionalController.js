@@ -1,8 +1,10 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import xss from 'xss';
 import { ProfessionalAccount } from '../models/ProfessionalAccount.js';
 import { ConsultationRequest } from '../models/ConsultationRequest.js';
+import { RevokedToken } from '../models/RevokedToken.js';
 
 function generateProToken(id) {
   const secret = process.env.JWT_SECRET;
@@ -77,9 +79,11 @@ export async function registerProfessional(req, res, next) {
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
+    const isExplicitApiClient = req.headers['x-api-client'] === 'true';
+
     res.status(201).json({
       success: true,
-      token,
+      ...(isExplicitApiClient ? { token } : {}),
       professional: {
         id: professional._id,
         email: professional.email,
@@ -121,9 +125,11 @@ export async function loginProfessional(req, res, next) {
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
+    const isExplicitApiClient = req.headers['x-api-client'] === 'true';
+
     res.json({
       success: true,
-      token,
+      ...(isExplicitApiClient ? { token } : {}),
       professional: {
         id: professional._id,
         email: professional.email,
@@ -143,12 +149,39 @@ export async function loginProfessional(req, res, next) {
 }
 
 export async function logoutProfessional(req, res) {
-  res.clearCookie('anon_pro_token', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax'
-  });
-  res.json({ success: true, message: 'Professional logged out.' });
+  try {
+    let token = req.cookies?.anon_pro_token;
+    if (!token && req.headers.authorization?.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
+    if (token) {
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+      let expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      try {
+        const decoded = jwt.decode(token);
+        if (decoded?.exp) {
+          expiresAt = new Date(decoded.exp * 1000);
+        }
+      } catch {}
+
+      await RevokedToken.findOneAndUpdate(
+        { tokenHash },
+        { tokenHash, tokenType: 'professional', expiresAt, revokedAt: new Date() },
+        { upsert: true }
+      );
+    }
+
+    res.clearCookie('anon_pro_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax'
+    });
+    res.json({ success: true, message: 'Professional logged out and token revoked.' });
+  } catch (err) {
+    res.clearCookie('anon_pro_token');
+    res.json({ success: true, message: 'Professional logged out.' });
+  }
 }
 
 export async function getProfessionalProfile(req, res) {

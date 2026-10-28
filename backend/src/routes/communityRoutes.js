@@ -7,7 +7,10 @@ import {
   updateCommunity,
   joinCommunity,
   leaveCommunity,
-  removeCommunityPost
+  removeCommunityPost,
+  requestCommunityAccess,
+  listCommunityJoinRequests,
+  reviewCommunityJoinRequest
 } from '../controllers/communityController.js';
 import { requireAnonymousAuth, optionalAnonymousAuth } from '../middleware/auth.js';
 import { postRateLimiter } from '../middleware/rateLimiter.js';
@@ -17,6 +20,9 @@ const router = express.Router();
 router.get('/', optionalAnonymousAuth, listCommunities);
 router.post('/', requireAnonymousAuth, postRateLimiter, createCommunity);
 router.get('/:identifier/members', requireAnonymousAuth, getCommunityMembers);
+router.get('/:identifier/requests', requireAnonymousAuth, listCommunityJoinRequests);
+router.post('/:id/request-access', requireAnonymousAuth, postRateLimiter, requestCommunityAccess);
+router.post('/:id/requests/:requestId/review', requireAnonymousAuth, reviewCommunityJoinRequest);
 router.get('/:identifier', optionalAnonymousAuth, getCommunity);
 router.patch('/:id', requireAnonymousAuth, updateCommunity);
 router.post('/:id/join', requireAnonymousAuth, joinCommunity);

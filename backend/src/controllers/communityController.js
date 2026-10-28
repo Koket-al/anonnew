@@ -1,4 +1,6 @@
+import mongoose from 'mongoose';
 import xss from 'xss';
+import crypto from 'crypto';
 import { Community } from '../models/Community.js';
 import { CommunityMembership } from '../models/CommunityMembership.js';
 import { Post } from '../models/Post.js';
@@ -124,6 +126,11 @@ export async function createCommunity(req, res, next) {
           'No hate speech, threats, or harassment.'
         ];
 
+    const isPriv = Boolean(isPrivate);
+    const inviteCode = isPriv
+      ? (req.body.inviteCode?.trim() || crypto.randomBytes(6).toString('hex'))
+      : null;
+
     const community = await Community.create({
       name: sanitizedName,
       slug,
@@ -131,7 +138,8 @@ export async function createCommunity(req, res, next) {
       topic: xss(topic.trim()),
       rules: cleanedRules,
       creator: req.identity._id,
-      isPrivate: Boolean(isPrivate),
+      isPrivate: isPriv,
+      inviteCode,
       memberCount: 1
     });
 
@@ -153,6 +161,8 @@ export async function createCommunity(req, res, next) {
         rules: community.rules,
         memberCount: community.memberCount,
         isMember: true,
+        isPrivate: community.isPrivate,
+        inviteCode: isPriv ? community.inviteCode : undefined,
         createdAt: community.createdAt
       }
     });
@@ -185,20 +195,16 @@ export async function getCommunity(req, res, next) {
       }
     }
 
-    // Private communities: only members may see full details
+    // Private communities: protect all private metadata from non-members
     if (community.isPrivate && !isMember) {
       return res.status(403).json({
         success: false,
-        error: 'This is a private community. You must be a member to view it.',
-        community: {
-          id: community._id,
-          name: community.name,
-          slug: community.slug,
-          isPrivate: true,
-          memberCount: community.memberCount
-        }
+        error: 'This is a private community. Membership or an authorized invitation is required.',
+        isPrivate: true
       });
     }
+
+    const isCreator = req.identity && community.creator?._id?.toString() === req.identity._id?.toString();
 
     res.json({
       success: true,
@@ -211,12 +217,13 @@ export async function getCommunity(req, res, next) {
         rules: community.rules,
         creator: community.creator?.username || 'Anonymous',
         creatorId: community.creator?._id,
-        isCreator: req.identity && community.creator?._id?.toString() === req.identity._id?.toString(),
+        isCreator,
         memberCount: community.memberCount,
         postCount: community.postCount,
         isMember,
         userRole,
         isPrivate: community.isPrivate,
+        inviteCode: isCreator && community.isPrivate ? community.inviteCode : undefined,
         createdAt: community.createdAt
       }
     });
@@ -284,6 +291,34 @@ export async function joinCommunity(req, res, next) {
       });
     }
 
+    // Enforce private-community admission rules
+    if (community.isPrivate) {
+      const { inviteCode } = req.body || {};
+      const hasValidInvite = Boolean(
+        inviteCode &&
+        community.inviteCode &&
+        String(inviteCode).trim() === community.inviteCode
+      );
+
+      const approvedRequest = community.joinRequests?.find(
+        r => r.identity.toString() === req.identity._id.toString() && r.status === 'approved'
+      );
+
+      if (!hasValidInvite && !approvedRequest) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied: This is a private community. Admission requires an authorized invitation code or owner approval.'
+        });
+      }
+
+      // If approved via join request, remove the request
+      if (approvedRequest) {
+        community.joinRequests = community.joinRequests.filter(
+          r => r.identity.toString() !== req.identity._id.toString()
+        );
+      }
+    }
+
     await CommunityMembership.create({
       community: community._id,
       identity: req.identity._id,
@@ -300,10 +335,12 @@ export async function joinCommunity(req, res, next) {
         communityId: community._id.toString(),
         memberCount: community.memberCount
       });
-      io.emit('communities_stream', {
-        communityId: community._id.toString(),
-        memberCount: community.memberCount
-      });
+      if (!community.isPrivate) {
+        io.emit('communities_stream', {
+          communityId: community._id.toString(),
+          memberCount: community.memberCount
+        });
+      }
     }
 
     res.json({
@@ -341,10 +378,34 @@ export async function leaveCommunity(req, res, next) {
         communityId: community._id.toString(),
         memberCount: community.memberCount
       });
-      io.emit('communities_stream', {
-        communityId: community._id.toString(),
-        memberCount: community.memberCount
-      });
+      if (!community.isPrivate) {
+        io.emit('communities_stream', {
+          communityId: community._id.toString(),
+          memberCount: community.memberCount
+        });
+      }
+
+      // Revoke private socket access for all sockets belonging to this user
+      const userSockets = io.sockets.adapter.rooms.get(`user:${req.identity._id}`);
+      if (userSockets) {
+        const communityRoom = `community:${community._id}`;
+        const communityPosts = await Post.find({ community: community._id }).select('_id');
+        const postRoomNames = communityPosts.map(p => `post:${p._id}`);
+
+        for (const socketId of userSockets) {
+          const s = io.sockets.sockets.get(socketId);
+          if (s) {
+            s.leave(communityRoom);
+            for (const pr of postRoomNames) {
+              s.leave(pr);
+            }
+            s.emit('community_access_revoked', {
+              communityId: community._id.toString(),
+              communityName: community.name
+            });
+          }
+        }
+      }
     }
 
     res.json({
@@ -393,6 +454,13 @@ export async function removeCommunityPost(req, res, next) {
 
     // Decrement community post count
     await Community.findByIdAndUpdate(community._id, { $inc: { postCount: -1 } });
+
+    const io = req.app.get('io');
+    if (io) {
+      const delPayload = { postId: post._id.toString() };
+      io.to(`post:${post._id}`).emit('post_deleted', delPayload);
+      io.to(`community:${community._id}`).emit('post_deleted', delPayload);
+    }
 
     res.json({ success: true, message: 'Message removed from community successfully.' });
   } catch (error) {
@@ -454,6 +522,132 @@ export async function getCommunityMembers(req, res, next) {
       },
       memberCount: activeMembers.length,
       members: activeMembers
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Request admission to a private community
+ */
+export async function requestCommunityAccess(req, res, next) {
+  try {
+    const { id } = req.params;
+    const community = await Community.findById(id);
+    if (!community) {
+      return res.status(404).json({ success: false, error: 'Community not found.' });
+    }
+    if (!community.isPrivate) {
+      return res.status(400).json({ success: false, error: 'This is a public community. You can join directly.' });
+    }
+
+    const isMember = await CommunityMembership.findOne({
+      community: community._id,
+      identity: req.identity._id
+    });
+    if (isMember) {
+      return res.status(400).json({ success: false, error: 'You are already a member of this community.' });
+    }
+
+    const existingReq = community.joinRequests?.find(
+      r => r.identity.toString() === req.identity._id.toString() && r.status === 'pending'
+    );
+    if (existingReq) {
+      return res.json({ success: true, message: 'Join request already submitted. Awaiting community owner review.' });
+    }
+
+    community.joinRequests.push({ identity: req.identity._id, status: 'pending' });
+    await community.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Join request submitted to community owner.'
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * List pending join requests for a private community (owner only)
+ */
+export async function listCommunityJoinRequests(req, res, next) {
+  try {
+    const commId = req.params.id || req.params.identifier;
+    const community = (mongoose.Types.ObjectId.isValid(commId))
+      ? await Community.findById(commId).populate('joinRequests.identity', 'username avatarSeed createdAt')
+      : await Community.findOne({ slug: commId }).populate('joinRequests.identity', 'username avatarSeed createdAt');
+
+    if (!community) {
+      return res.status(404).json({ success: false, error: 'Community not found.' });
+    }
+    if (community.creator.toString() !== req.identity._id.toString()) {
+      return res.status(403).json({ success: false, error: 'Only the community owner can view join requests.' });
+    }
+    const pending = (community.joinRequests || []).filter(r => r.status === 'pending');
+    res.json({
+      success: true,
+      requests: pending.map(r => ({
+        id: r._id,
+        identity: {
+          id: r.identity?._id?.toString(),
+          username: r.identity?.username || 'Anonymous'
+        },
+        createdAt: r.createdAt
+      }))
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Review a join request (owner only)
+ */
+export async function reviewCommunityJoinRequest(req, res, next) {
+  try {
+    const { id, requestId } = req.params;
+    const decision = req.body.decision || req.body.action;
+    if (!['approve', 'reject'].includes(decision)) {
+      return res.status(400).json({ success: false, error: 'Decision must be "approve" or "reject".' });
+    }
+
+    const community = (mongoose.Types.ObjectId.isValid(id))
+      ? await Community.findById(id)
+      : await Community.findOne({ slug: id });
+
+    if (!community) {
+      return res.status(404).json({ success: false, error: 'Community not found.' });
+    }
+    if (community.creator.toString() !== req.identity._id.toString()) {
+      return res.status(403).json({ success: false, error: 'Only the community owner can review join requests.' });
+    }
+
+    const request = community.joinRequests.id(requestId);
+    if (!request) {
+      return res.status(404).json({ success: false, error: 'Join request not found.' });
+    }
+
+    if (decision === 'approve') {
+      request.status = 'approved';
+      // Automatically create membership
+      await CommunityMembership.findOneAndUpdate(
+        { community: community._id, identity: request.identity },
+        { role: 'member', joinedAt: new Date() },
+        { upsert: true, new: true }
+      );
+      community.memberCount = await CommunityMembership.countDocuments({ community: community._id });
+    } else {
+      request.status = 'rejected';
+    }
+
+    await community.save();
+
+    res.json({
+      success: true,
+      message: `Join request ${decision}ed successfully.`,
+      decision
     });
   } catch (error) {
     next(error);

@@ -21,6 +21,7 @@ function setSessionCookie(res, token) {
 
 export async function enterAnonymously(req, res, next) {
   try {
+    const isExplicitApiClient = req.headers['x-api-client'] === 'true';
     const rawToken = req.cookies?.anon_session_token || req.headers['x-anon-token'];
     if (rawToken) {
       const tokenHash = hashToken(rawToken);
@@ -39,6 +40,8 @@ export async function enterAnonymously(req, res, next) {
           isCurrent: id._id.toString() === existingSession.identity._id.toString()
         }));
 
+        setSessionCookie(res, rawToken);
+
         return res.json({
           success: true,
           identity: {
@@ -49,7 +52,7 @@ export async function enterAnonymously(req, res, next) {
           },
           identities,
           maxIdentities: 5,
-          token: rawToken,
+          ...(isExplicitApiClient ? { token: rawToken } : {}),
           message: 'Active anonymous session reconnected.'
         });
       }
@@ -77,7 +80,7 @@ export async function enterAnonymously(req, res, next) {
       ],
       maxIdentities: 5,
       canCreateMore: true,
-      token: sessionToken,
+      ...(isExplicitApiClient ? { token: sessionToken } : {}),
       message: 'Anonymous cryptographic identity created successfully.'
     });
   } catch (error) {
@@ -127,6 +130,7 @@ export async function getCurrentIdentity(req, res, next) {
 
 export async function createAdditionalIdentity(req, res, next) {
   try {
+    const isExplicitApiClient = req.headers['x-api-client'] === 'true';
     const { bio } = req.body || {};
     let session = req.session;
 
@@ -167,7 +171,7 @@ export async function createAdditionalIdentity(req, res, next) {
         ],
         maxIdentities: 5,
         canCreateMore: true,
-        token: sessionToken,
+        ...(isExplicitApiClient ? { token: sessionToken } : {}),
         message: `Cryptographic identity ${identity.username} created successfully.`
       });
     }
@@ -196,7 +200,7 @@ export async function createAdditionalIdentity(req, res, next) {
       identities,
       maxIdentities: 5,
       canCreateMore: identities.length < 5,
-      token: req.cookies?.anon_session_token || req.headers['x-anon-token'],
+      ...(isExplicitApiClient ? { token: req.cookies?.anon_session_token || req.headers['x-anon-token'] } : {}),
       message: `New cryptographic identity ${identity.username} created. You now hold ${identities.length} of 5 identities.`
     });
   } catch (error) {
@@ -248,6 +252,21 @@ export async function removeIdentity(req, res, next) {
 
     const result = await removeIdentityFromSession(req.session, id, { deleteMessages: Boolean(deleteMessages) });
     await req.session.populate('identities');
+
+    // Revoke any active socket rooms for the removed identity
+    const io = req.app.get('io');
+    if (io) {
+      const userSockets = io.sockets.adapter.rooms.get(`user:${id}`);
+      if (userSockets) {
+        for (const socketId of userSockets) {
+          const s = io.sockets.sockets.get(socketId);
+          if (s) {
+            s.emit('identity_revoked', { identityId: id });
+            s.disconnect(true);
+          }
+        }
+      }
+    }
 
     const currentIdStr = result.activeIdentity ? result.activeIdentity._id.toString() : '';
     const identities = (req.session.identities || []).map(ident => ({

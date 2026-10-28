@@ -14,6 +14,7 @@ import crypto from 'crypto';
 const joinLocks = new Map();
 
 function acquireJoinLock(roomId, socketId) {
+  if (!roomId || typeof roomId !== 'string' || !/^[0-9a-fA-F]{24}$/.test(roomId)) return false;
   if (!joinLocks.has(roomId)) joinLocks.set(roomId, new Set());
   const lock = joinLocks.get(roomId);
   if (lock.has(socketId)) return false; // already locked
@@ -21,7 +22,48 @@ function acquireJoinLock(roomId, socketId) {
   return true;
 }
 function releaseJoinLock(roomId, socketId) {
-  joinLocks.get(roomId)?.delete(socketId);
+  const lock = joinLocks.get(roomId);
+  if (lock) {
+    lock.delete(socketId);
+    if (lock.size === 0) {
+      joinLocks.delete(roomId);
+    }
+  }
+}
+
+// ─── Per-socket join-attempt rate limiter ────────────────────────────────────
+const joinAttempts = new Map(); // socketId -> { count, resetAt }
+const JOIN_RATE_WINDOW_MS = 10_000; // 10 seconds
+const JOIN_RATE_MAX = 6;            // max joins per window
+
+function checkJoinRate(socketId) {
+  const now = Date.now();
+  const entry = joinAttempts.get(socketId) || { count: 0, resetAt: now + JOIN_RATE_WINDOW_MS };
+  if (now > entry.resetAt) {
+    entry.count = 0;
+    entry.resetAt = now + JOIN_RATE_WINDOW_MS;
+  }
+  entry.count += 1;
+  joinAttempts.set(socketId, entry);
+  return entry.count <= JOIN_RATE_MAX;
+}
+
+// ─── Cookie helper ───────────────────────────────────────────────────────────
+function parseCookies(cookieHeader) {
+  const cookies = {};
+  if (!cookieHeader || typeof cookieHeader !== 'string') return cookies;
+  const items = cookieHeader.split(';');
+  for (const item of items) {
+    const [rawKey, ...rawVal] = item.trim().split('=');
+    if (rawKey) {
+      try {
+        cookies[rawKey] = decodeURIComponent(rawVal.join('='));
+      } catch {
+        cookies[rawKey] = rawVal.join('=');
+      }
+    }
+  }
+  return cookies;
 }
 
 // ─── Per-socket message-rate limiter ─────────────────────────────────────────
@@ -47,7 +89,8 @@ export function setupSocketIO(io) {
   // Guests (no token) are allowed to connect with socket.identity = null.
   io.use(async (socket, next) => {
     try {
-      const token = socket.handshake.auth?.token || socket.handshake.headers?.['x-anon-token'];
+      const cookies = parseCookies(socket.handshake.headers?.cookie);
+      const token = socket.handshake.auth?.token || socket.handshake.headers?.['x-anon-token'] || cookies.anon_session_token;
       if (token) {
         const tokenHash = hashToken(token);
         const session = await AnonymousSession.findOne({
@@ -293,23 +336,53 @@ export function setupSocketIO(io) {
 
     // ── Listening Room ───────────────────────────────────────────────────────
     socket.on('join_listening_room', async ({ roomId } = {}) => {
+      if (!checkJoinRate(socket.id)) {
+        return socket.emit('error', 'Too many join attempts. Please slow down.');
+      }
+      if (!roomId || typeof roomId !== 'string' || !/^[0-9a-fA-F]{24}$/.test(roomId)) {
+        return socket.emit('error', 'Invalid room ID.');
+      }
       if (!acquireJoinLock(roomId, socket.id)) return; // Prevent concurrent join spam
       try {
-        if (!roomId || typeof roomId !== 'string' || !/^[0-9a-fA-F]{24}$/.test(roomId)) {
-          return socket.emit('error', 'Invalid room ID.');
+        // Enforce one-room-per-socket: leave previous room if different
+        if (socket.currentRoomId && socket.currentRoomId !== roomId) {
+          const prevRoomId = socket.currentRoomId;
+          const prevChannel = `listening_room:${prevRoomId}`;
+          socket.leave(prevChannel);
+          socket.currentRoomId = null;
+          if (userId) {
+            try {
+              const prevRoom = await ListeningRoom.findById(prevRoomId);
+              if (prevRoom) {
+                prevRoom.activeParticipants = prevRoom.activeParticipants.filter(p => p.toString() !== userId);
+                await prevRoom.save();
+              }
+            } catch {}
+          }
+          const prevCount = io.sockets.adapter.rooms.get(prevChannel)?.size || 0;
+          io.to(prevChannel).emit('user_left_room', {
+            username,
+            participantCount: prevCount
+          });
         }
 
         const roomChannel = `listening_room:${roomId}`;
 
         // Idempotent: don't re-join if already in the room
-        if (socket.rooms.has(roomChannel)) return;
+        if (socket.rooms.has(roomChannel) && socket.currentRoomId === roomId) return;
 
-        let participantCount = 0;
+        // Check channel occupancy to prevent guest overflow beyond maxParticipants
+        const currentOccupants = io.sockets.adapter.rooms.get(roomChannel)?.size || 0;
+        const room = await ListeningRoom.findById(roomId);
+        if (!room || room.isClosed) {
+          return socket.emit('error', 'Room not found or closed.');
+        }
+        if (currentOccupants >= room.maxParticipants) {
+          return socket.emit('error', 'Room is at capacity.');
+        }
+
         if (userId) {
           // Check if user is already an active participant in DB
-          let room = await ListeningRoom.findOne({ _id: roomId, isClosed: false });
-          if (!room) return socket.emit('error', 'Room not found or closed.');
-
           const alreadyIn = room.activeParticipants.some(p => p.toString() === userId);
           if (!alreadyIn) {
             // Atomic add with capacity condition to prevent race-condition overflow
@@ -332,26 +405,14 @@ export function setupSocketIO(io) {
               if (check.activeParticipants.length >= check.maxParticipants) {
                 return socket.emit('error', 'Room is at capacity.');
               }
-              room = check;
-            } else {
-              room = updated;
             }
           }
-          participantCount = room.activeParticipants.length;
-        } else {
-          // Guest: verify room exists, is open, and capacity limit
-          const room = await ListeningRoom.findById(roomId);
-          if (!room || room.isClosed) {
-            return socket.emit('error', 'Room not found or closed.');
-          }
-          if (room.activeParticipants.length >= room.maxParticipants) {
-            return socket.emit('error', 'Room is at capacity.');
-          }
-          participantCount = room.activeParticipants.length;
         }
 
         socket.join(roomChannel);
         socket.currentRoomId = roomId;
+
+        const participantCount = io.sockets.adapter.rooms.get(roomChannel)?.size || 1;
 
         io.to(roomChannel).emit('user_joined_room', {
           username,
@@ -413,21 +474,25 @@ export function setupSocketIO(io) {
     socket.on('leave_listening_room', async ({ roomId } = {}) => {
       try {
         if (!roomId || typeof roomId !== 'string') return;
-        socket.leave(`listening_room:${roomId}`);
+        const roomChannel = `listening_room:${roomId}`;
+        socket.leave(roomChannel);
         if (socket.currentRoomId === roomId) socket.currentRoomId = null;
 
         if (userId) {
-          const room = await ListeningRoom.findById(roomId);
-          if (room) {
-            room.activeParticipants = room.activeParticipants.filter(p => p.toString() !== userId);
-            await room.save();
-
-            io.to(`listening_room:${roomId}`).emit('user_left_room', {
-              username,
-              participantCount: room.activeParticipants.length
-            });
-          }
+          try {
+            const room = await ListeningRoom.findById(roomId);
+            if (room) {
+              room.activeParticipants = room.activeParticipants.filter(p => p.toString() !== userId);
+              await room.save();
+            }
+          } catch {}
         }
+
+        const participantCount = io.sockets.adapter.rooms.get(roomChannel)?.size || 0;
+        io.to(roomChannel).emit('user_left_room', {
+          username,
+          participantCount
+        });
       } catch (err) {
         console.error('[Socket leave_listening_room error]:', err.message);
       }
@@ -435,23 +500,31 @@ export function setupSocketIO(io) {
 
     // ── Disconnect ───────────────────────────────────────────────────────────
     socket.on('disconnect', async () => {
-      // Clean up message rate limiter entry
+      // Clean up rate limiters
       messageCounts.delete(socket.id);
+      joinAttempts.delete(socket.id);
 
-      if (socket.currentRoomId && userId) {
-        try {
-          const room = await ListeningRoom.findById(socket.currentRoomId);
-          if (room) {
-            room.activeParticipants = room.activeParticipants.filter(p => p.toString() !== userId);
-            await room.save();
-            io.to(`listening_room:${socket.currentRoomId}`).emit('user_left_room', {
-              username,
-              participantCount: room.activeParticipants.length
-            });
-          }
-        } catch {
-          // Ignore cleanup errors on disconnect
+      if (socket.currentRoomId) {
+        const roomId = socket.currentRoomId;
+        const roomChannel = `listening_room:${roomId}`;
+        socket.leave(roomChannel);
+        socket.currentRoomId = null;
+
+        if (userId) {
+          try {
+            const room = await ListeningRoom.findById(roomId);
+            if (room) {
+              room.activeParticipants = room.activeParticipants.filter(p => p.toString() !== userId);
+              await room.save();
+            }
+          } catch {}
         }
+
+        const participantCount = io.sockets.adapter.rooms.get(roomChannel)?.size || 0;
+        io.to(roomChannel).emit('user_left_room', {
+          username,
+          participantCount
+        });
       }
     });
   });

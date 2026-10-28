@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { useNavigate, useLocation } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext.jsx';
-import { getApiToken } from '../services/api.js';
 import {
   Bell,
   BellOff,
@@ -155,10 +154,7 @@ export function RealtimeProvider({ children }) {
 
   // Initialize and maintain shared socket connection
   useEffect(() => {
-    const token = getApiToken();
-
     const socket = io({
-      auth: { token },
       withCredentials: true,
       transports: ['websocket', 'polling']
     });
@@ -171,6 +167,16 @@ export function RealtimeProvider({ children }) {
 
     socket.on('disconnect', () => {
       setIsConnected(false);
+    });
+
+    // Real-time Community Access Revocation
+    socket.on('community_access_revoked', () => {
+      showToast({
+        type: 'warning',
+        title: 'Community Access Revoked',
+        message: 'Your membership in a private community has ended or was revoked.',
+        duration: 4000
+      });
     });
 
     // Real-time Community Post Notification

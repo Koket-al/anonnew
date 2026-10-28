@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useRealtime } from '../context/RealtimeContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
-import { getConversations, getApiToken } from '../services/api.js';
+import { getConversations } from '../services/api.js';
 import DeleteIdentityModal from './DeleteIdentityModal.jsx';
 import {
   Home,

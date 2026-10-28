@@ -15,11 +15,32 @@ import { ProfessionalAccount } from '../src/models/ProfessionalAccount.js';
 let baseURL;
 let testServer;
 
+// API Test client fetch wrapper: passes x-api-client header for explicit API clients
+const rawFetch = globalThis.fetch;
+globalThis.fetch = (url, options = {}) => {
+  const headers = new Headers(options.headers || {});
+  if (!headers.has('x-api-client')) {
+    headers.set('x-api-client', 'true');
+  }
+  return rawFetch(url, { ...options, headers });
+};
+
+async function safeDropDatabase() {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Refusing to drop database in production environment!');
+  }
+  const dbName = mongoose.connection.name || '';
+  if (!dbName.toLowerCase().includes('test')) {
+    throw new Error(`Refusing to drop database '${dbName}': database name must contain 'test'!`);
+  }
+  await mongoose.connection.dropDatabase();
+}
+
 before(async () => {
   if (mongoose.connection.readyState === 0) {
     await connectDB();
   }
-  await mongoose.connection.dropDatabase().catch(() => {});
+  await safeDropDatabase().catch(() => {});
   await new Promise((resolve) => {
     testServer = app.listen(0, () => {
       const port = testServer.address().port;
@@ -30,7 +51,7 @@ before(async () => {
 });
 
 after(async () => {
-  await mongoose.connection.dropDatabase().catch(() => {});
+  await safeDropDatabase().catch(() => {});
   await new Promise((resolve) => testServer.close(resolve));
   await mongoose.disconnect();
 });

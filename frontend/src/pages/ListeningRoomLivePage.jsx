@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useRealtime } from '../context/RealtimeContext.jsx';
-import { getListeningRoom, leaveListeningRoom, closeListeningRoom, getApiToken } from '../services/api.js';
+import { getListeningRoom, leaveListeningRoom, closeListeningRoom } from '../services/api.js';
 import ReportModal from '../components/ReportModal.jsx';
 import { io } from 'socket.io-client';
 import {
@@ -54,11 +54,10 @@ export default function ListeningRoomLivePage() {
           setRoom(res.room);
           setParticipants(res.room.participants || []);
 
-          const token = getApiToken();
-          if (!token || isCancelled) return;
+          if (isCancelled) return;
 
           localSocket = io({
-            auth: { token },
+            withCredentials: true,
             transports: ['websocket', 'polling']
           });
 

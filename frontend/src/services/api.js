@@ -13,23 +13,13 @@
  *   No shared passphrase is sent from the client.
  */
 
-// In-memory only — never written to localStorage or sessionStorage
-let inMemoryToken = null;
-let inMemoryAdminToken = null;
+// Tokens are strictly server-managed via HttpOnly cookies and never stored in JavaScript memory
+export function setAdminToken(token) {}
+export function getAdminToken() { return null; }
+export function setApiToken(token) {}
+export function getApiToken() { return null; }
 
 const CRYPTO_CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-
-/**
- * Stores the admin JWT in memory only.
- * The httpOnly cookie set by the backend is the authoritative session carrier.
- */
-export function setAdminToken(token) {
-  inMemoryAdminToken = token || null;
-}
-
-export function getAdminToken() {
-  return inMemoryAdminToken;
-}
 
 /**
  * Generates a cryptographically random string (e.g. "Ab1z4Qt") in browser using Web Crypto API
@@ -47,20 +37,6 @@ export function generateClientCryptoCode(length = 7) {
   return Math.random().toString(36).substring(2, 2 + length);
 }
 
-/**
- * Stores the anonymous session token in memory only.
- * The backend sets an httpOnly cookie; the in-memory copy is used for:
- *   - Socket.IO handshake auth (cookies are not sent there by default)
- *   - Fallback header for non-SPA / pre-cookie environments
- */
-export function setApiToken(token) {
-  inMemoryToken = token || null;
-}
-
-export function getApiToken() {
-  return inMemoryToken;
-}
-
 export async function request(endpoint, options = {}) {
   const url = endpoint.startsWith('http') ? endpoint : `/api${endpoint}`;
 
@@ -68,18 +44,6 @@ export async function request(endpoint, options = {}) {
     'Content-Type': 'application/json',
     ...(options.headers || {})
   };
-
-  // Send in-memory session token as header (complements the httpOnly cookie)
-  const token = getApiToken();
-  if (token && !headers['x-anon-token']) {
-    headers['x-anon-token'] = token;
-  }
-
-  // Admin token: rely on httpOnly cookie; also send in Authorization header if held in memory
-  const adminToken = getAdminToken();
-  if (adminToken && !headers['authorization']) {
-    headers['authorization'] = `Bearer ${adminToken}`;
-  }
 
   const response = await fetch(url, {
     ...options,
@@ -111,9 +75,7 @@ export async function request(endpoint, options = {}) {
 // ==========================================================================
 
 export async function enterAnonymously() {
-  const data = await request('/auth/enter', { method: 'POST' });
-  if (data.token) setApiToken(data.token);
-  return data;
+  return await request('/auth/enter', { method: 'POST' });
 }
 
 export async function getCurrentIdentity() {
@@ -121,12 +83,10 @@ export async function getCurrentIdentity() {
 }
 
 export async function createAdditionalIdentity(bio = '') {
-  const data = await request('/auth/identities', {
+  return await request('/auth/identities', {
     method: 'POST',
     body: JSON.stringify({ bio })
   });
-  if (data.token) setApiToken(data.token);
-  return data;
 }
 
 export const createIdentityApi = createAdditionalIdentity;
@@ -146,15 +106,11 @@ export async function deleteIdentity(identityId, { deleteMessages = false } = {}
 }
 
 export async function rotateIdentity() {
-  const data = await request('/auth/rotate', { method: 'POST' });
-  if (data.token) setApiToken(data.token);
-  return data;
+  return await request('/auth/rotate', { method: 'POST' });
 }
 
 export async function leaveSession() {
-  const data = await request('/auth/leave', { method: 'POST' });
-  setApiToken(null);
-  return data;
+  return await request('/auth/leave', { method: 'POST' });
 }
 
 // ==========================================================================
@@ -191,8 +147,29 @@ export async function updateCommunity(id, payload) {
   });
 }
 
-export async function joinCommunity(id) {
-  return await request(`/communities/${id}/join`, { method: 'POST' });
+export async function joinCommunity(id, inviteCode = null) {
+  return await request(`/communities/${id}/join`, {
+    method: 'POST',
+    ...(inviteCode ? { body: JSON.stringify({ inviteCode }) } : {})
+  });
+}
+
+export async function requestCommunityAccess(id, note = '') {
+  return await request(`/communities/${id}/request-access`, {
+    method: 'POST',
+    body: JSON.stringify({ note })
+  });
+}
+
+export async function listCommunityJoinRequests(id) {
+  return await request(`/communities/${id}/requests`);
+}
+
+export async function reviewCommunityJoinRequest(id, requestId, action) {
+  return await request(`/communities/${id}/requests/${requestId}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ action })
+  });
 }
 
 export async function leaveCommunity(id) {
@@ -461,23 +438,14 @@ export async function reviewProfessionalVerificationModeration(id, payload) {
 // ==========================================================================
 
 export async function adminLogin({ email, password }) {
-  const res = await request('/admin/login', {
+  return await request('/admin/login', {
     method: 'POST',
     body: JSON.stringify({ email, password })
   });
-  if (res && res.token) {
-    // Keep in memory for Authorization header; httpOnly cookie is authoritative
-    setAdminToken(res.token);
-  }
-  return res;
 }
 
 export async function adminLogout() {
-  try {
-    await request('/admin/logout', { method: 'POST' });
-  } finally {
-    setAdminToken(null);
-  }
+  return await request('/admin/logout', { method: 'POST' });
 }
 
 export async function getAdminMe() {

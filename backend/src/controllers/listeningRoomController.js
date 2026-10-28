@@ -44,11 +44,14 @@ export async function createListeningRoom(req, res, next) {
       return res.status(400).json({ success: false, error: 'Topic category is required.' });
     }
 
+    const maxParticipants = Number(req.body.maxParticipants) > 0 ? Math.min(Number(req.body.maxParticipants), 50) : 12;
+
     const room = await ListeningRoom.create({
       title: xss(title.trim()),
       topic: xss(topic.trim()),
       description: description ? xss(description.trim().slice(0, 300)) : '',
       creator: req.identity._id,
+      maxParticipants,
       activeParticipants: [req.identity._id]
     });
 

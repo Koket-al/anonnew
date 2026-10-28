@@ -47,6 +47,29 @@ const communitySchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    inviteCode: {
+      type: String,
+      default: null,
+      index: true
+    },
+    joinRequests: [
+      {
+        identity: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'AnonymousIdentity',
+          required: true
+        },
+        status: {
+          type: String,
+          enum: ['pending', 'approved', 'rejected'],
+          default: 'pending'
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now
+        }
+      }
+    ],
     memberCount: {
       type: Number,
       default: 1

@@ -1,9 +1,11 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import xss from 'xss';
 import { ProfessionalAccount } from '../models/ProfessionalAccount.js';
 import { ConsultationRequest } from '../models/ConsultationRequest.js';
 import { AnonymousIdentity } from '../models/AnonymousIdentity.js';
+import { RevokedToken } from '../models/RevokedToken.js';
 
 /**
  * Returns the JWT secret from environment.
@@ -78,11 +80,11 @@ export async function adminLogin(req, res, next) {
       maxAge: 24 * 60 * 60 * 1000
     });
 
-    // Return token only in response body so frontend can hold it in memory;
-    // the httpOnly cookie is the authoritative session.
+    const isExplicitApiClient = req.headers['x-api-client'] === 'true';
+
     res.json({
       success: true,
-      token,
+      ...(isExplicitApiClient ? { token } : {}),
       admin: {
         email: configuredEmail,
         role: 'admin'
@@ -95,15 +97,44 @@ export async function adminLogin(req, res, next) {
 }
 
 /**
- * Admin Logout — clears the admin session cookie
+ * Admin Logout — revokes the admin session server-side and clears the cookie
  */
 export async function adminLogout(req, res) {
-  res.clearCookie('anon_admin_token', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax'
-  });
-  res.json({ success: true, message: 'Admin session ended.' });
+  try {
+    let token = req.cookies?.anon_admin_token;
+    if (!token && req.headers.authorization?.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1];
+    } else if (!token && req.headers['x-admin-token']) {
+      token = req.headers['x-admin-token'];
+    }
+
+    if (token) {
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+      let expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      try {
+        const decoded = jwt.decode(token);
+        if (decoded?.exp) {
+          expiresAt = new Date(decoded.exp * 1000);
+        }
+      } catch {}
+
+      await RevokedToken.findOneAndUpdate(
+        { tokenHash },
+        { tokenHash, tokenType: 'admin', expiresAt, revokedAt: new Date() },
+        { upsert: true }
+      );
+    }
+
+    res.clearCookie('anon_admin_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax'
+    });
+    res.json({ success: true, message: 'Admin session ended and token revoked.' });
+  } catch (err) {
+    res.clearCookie('anon_admin_token');
+    res.json({ success: true, message: 'Admin session ended.' });
+  }
 }
 
 /**

@@ -70,6 +70,12 @@ app.use(helmet({
 
 app.use(cors({
   origin: (origin, callback) => {
+    // Explicitly reject null origin (sandboxed iframes, file://, data URIs)
+    if (origin === 'null') {
+      const err = new Error('Not allowed by CORS');
+      err.status = 403;
+      return callback(err);
+    }
     // Allow non-browser requests (e.g. mobile, tests, curl without Origin header)
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) {
@@ -82,23 +88,51 @@ app.use(cors({
   credentials: true
 }));
 
-// CSRF Origin validation for state-changing browser requests
+app.use(cookieParser(process.env.SESSION_SECRET));
+app.use(express.json({ limit: '1mb' }));
+app.use(generalRateLimiter);
+
+// CSRF Origin & Cross-Site validation for state-changing browser requests
 app.use((req, res, next) => {
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
     const origin = req.headers.origin;
-    if (origin && !allowedOrigins.includes(origin)) {
-      return res.status(403).json({
-        success: false,
-        error: 'Forbidden: Cross-site request rejected.'
-      });
+    if (origin) {
+      if (origin === 'null' || !allowedOrigins.includes(origin)) {
+        return res.status(403).json({
+          success: false,
+          error: 'Forbidden: Cross-site request rejected.'
+        });
+      }
+    } else {
+      // Missing origin: check if request is browser cross-site
+      const secFetchSite = req.headers['sec-fetch-site'];
+      if (secFetchSite === 'cross-site') {
+        return res.status(403).json({
+          success: false,
+          error: 'Forbidden: Cross-site request rejected.'
+        });
+      }
+
+      if (req.headers.referer) {
+        try {
+          const refererOrigin = new URL(req.headers.referer).origin;
+          if (!allowedOrigins.includes(refererOrigin)) {
+            return res.status(403).json({
+              success: false,
+              error: 'Forbidden: Cross-site referer rejected.'
+            });
+          }
+        } catch {
+          return res.status(403).json({
+            success: false,
+            error: 'Forbidden: Invalid referer header.'
+          });
+        }
+      }
     }
   }
   next();
 });
-
-app.use(cookieParser(process.env.SESSION_SECRET));
-app.use(express.json({ limit: '1mb' }));
-app.use(generalRateLimiter);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

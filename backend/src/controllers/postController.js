@@ -239,11 +239,11 @@ export async function createPost(req, res, next) {
 
     const io = req.app.get('io');
     if (io) {
-      // Broadcast to global discussion stream (Ask the Crowd)
-      io.to('posts_stream').emit('new_post', formattedPost);
-
-      if (community) {
-        // Broadcast to community room
+      if (!community) {
+        // Broadcast standalone public discussion posts to global stream (Ask the Crowd)
+        io.to('posts_stream').emit('new_post', formattedPost);
+      } else {
+        // Community-specific posts are broadcast ONLY to the community room
         io.to(`community:${community._id}`).emit('new_post', formattedPost);
 
         // Notify active members of this community
@@ -480,8 +480,9 @@ export async function createReply(req, res, next) {
         replyCount: post.replyCount,
         lastActivityAt: post.lastActivityAt
       };
-      io.to('posts_stream').emit('post_updated', updatePayload);
-      if (post.community) {
+      if (!post.community) {
+        io.to('posts_stream').emit('post_updated', updatePayload);
+      } else {
         const commId = post.community._id || post.community;
         io.to(`community:${commId}`).emit('post_updated', updatePayload);
       }
@@ -567,12 +568,12 @@ export async function toggleBeenThroughThis(req, res, next) {
       const reactionPayload = {
         postId: post._id.toString(),
         beenThroughThisCount: post.beenThroughThisCount,
-        userId: userId.toString(),
         hasMarkedBeenThroughThis: !alreadyMarked
       };
       io.to(`post:${post._id}`).emit('post_reaction_updated', reactionPayload);
-      io.to('posts_stream').emit('post_reaction_updated', reactionPayload);
-      if (post.community) {
+      if (!post.community) {
+        io.to('posts_stream').emit('post_reaction_updated', reactionPayload);
+      } else {
         const commId = post.community._id || post.community;
         io.to(`community:${commId}`).emit('post_reaction_updated', reactionPayload);
       }
@@ -628,8 +629,9 @@ export async function deletePost(req, res, next) {
     if (io) {
       const delPayload = { postId: post._id.toString() };
       io.to(`post:${post._id}`).emit('post_deleted', delPayload);
-      io.to('posts_stream').emit('post_deleted', delPayload);
-      if (post.community) {
+      if (!post.community) {
+        io.to('posts_stream').emit('post_deleted', delPayload);
+      } else {
         io.to(`community:${post.community}`).emit('post_deleted', delPayload);
       }
     }
@@ -683,11 +685,12 @@ export async function deleteReply(req, res, next) {
         replyCount: Math.max(0, (parentPost?.replyCount || 1) - 1)
       };
       io.to(`post:${reply.post}`).emit('reply_deleted', delReplyPayload);
-      io.to('posts_stream').emit('post_updated', {
-        postId: reply.post.toString(),
-        replyCount: delReplyPayload.replyCount
-      });
-      if (parentPost && parentPost.community) {
+      if (!parentPost?.community) {
+        io.to('posts_stream').emit('post_updated', {
+          postId: reply.post.toString(),
+          replyCount: delReplyPayload.replyCount
+        });
+      } else {
         io.to(`community:${parentPost.community}`).emit('post_updated', {
           postId: reply.post.toString(),
           replyCount: delReplyPayload.replyCount

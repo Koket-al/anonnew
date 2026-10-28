@@ -1,5 +1,7 @@
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { ProfessionalAccount } from '../models/ProfessionalAccount.js';
+import { RevokedToken } from '../models/RevokedToken.js';
 
 /**
  * Returns the JWT secret from environment.
@@ -24,6 +26,16 @@ export async function requireProfessionalAuth(req, res, next) {
       return res.status(401).json({
         success: false,
         error: 'Professional authorization required.'
+      });
+    }
+
+    // Verify token was not revoked server-side on logout
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const isRevoked = await RevokedToken.findOne({ tokenHash });
+    if (isRevoked) {
+      return res.status(401).json({
+        success: false,
+        error: 'Professional session has been logged out and revoked. Please log in again.'
       });
     }
 
