@@ -109,6 +109,9 @@ export async function getCurrentIdentity(req, res, next) {
       isCurrent: id._id.toString() === currentIdStr
     }));
 
+    const rawToken = req.cookies?.anon_session_token || req.headers['x-anon-token'];
+    const isExplicitApiClient = req.headers['x-api-client'] === 'true';
+
     res.json({
       success: true,
       identity: {
@@ -121,7 +124,8 @@ export async function getCurrentIdentity(req, res, next) {
       },
       identities,
       maxIdentities: 5,
-      canCreateMore: identities.length < 5
+      canCreateMore: identities.length < 5,
+      ...(isExplicitApiClient && rawToken ? { token: rawToken } : {})
     });
   } catch (error) {
     next(error);

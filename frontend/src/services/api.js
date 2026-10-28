@@ -13,11 +13,84 @@
  *   No shared passphrase is sent from the client.
  */
 
-// Tokens are strictly server-managed via HttpOnly cookies and never stored in JavaScript memory
-export function setAdminToken(token) {}
-export function getAdminToken() { return null; }
-export function setApiToken(token) {}
-export function getApiToken() { return null; }
+// Token storage with localStorage persistence to survive browser refreshes & cross-site restrictions
+let inMemoryToken = null;
+let inMemoryAdminToken = null;
+let inMemoryProToken = null;
+
+try {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    inMemoryToken = localStorage.getItem('anon_session_token') || null;
+    inMemoryAdminToken = localStorage.getItem('anon_admin_token') || null;
+    inMemoryProToken = localStorage.getItem('anon_pro_token') || null;
+  }
+} catch {}
+
+export function setApiToken(token) {
+  inMemoryToken = token || null;
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      if (token) {
+        localStorage.setItem('anon_session_token', token);
+      } else {
+        localStorage.removeItem('anon_session_token');
+      }
+    }
+  } catch {}
+}
+
+export function getApiToken() {
+  if (!inMemoryToken && typeof window !== 'undefined' && window.localStorage) {
+    try {
+      inMemoryToken = localStorage.getItem('anon_session_token') || null;
+    } catch {}
+  }
+  return inMemoryToken;
+}
+
+export function setAdminToken(token) {
+  inMemoryAdminToken = token || null;
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      if (token) {
+        localStorage.setItem('anon_admin_token', token);
+      } else {
+        localStorage.removeItem('anon_admin_token');
+      }
+    }
+  } catch {}
+}
+
+export function getAdminToken() {
+  if (!inMemoryAdminToken && typeof window !== 'undefined' && window.localStorage) {
+    try {
+      inMemoryAdminToken = localStorage.getItem('anon_admin_token') || null;
+    } catch {}
+  }
+  return inMemoryAdminToken;
+}
+
+export function setProToken(token) {
+  inMemoryProToken = token || null;
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      if (token) {
+        localStorage.setItem('anon_pro_token', token);
+      } else {
+        localStorage.removeItem('anon_pro_token');
+      }
+    }
+  } catch {}
+}
+
+export function getProToken() {
+  if (!inMemoryProToken && typeof window !== 'undefined' && window.localStorage) {
+    try {
+      inMemoryProToken = localStorage.getItem('anon_pro_token') || null;
+    } catch {}
+  }
+  return inMemoryProToken;
+}
 
 const CRYPTO_CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
@@ -43,15 +116,23 @@ export async function request(endpoint, options = {}) {
   const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}/api${path}`;
 
+  const anonToken = getApiToken();
+  const adminToken = getAdminToken();
+  const proToken = getProToken();
+
   const headers = {
     'Content-Type': 'application/json',
+    'x-api-client': 'true',
+    ...(anonToken ? { 'x-anon-token': anonToken } : {}),
+    ...(adminToken ? { 'x-admin-token': adminToken, Authorization: `Bearer ${adminToken}` } : {}),
+    ...(proToken ? { 'x-pro-token': proToken } : {}),
     ...(options.headers || {})
   };
 
   const response = await fetch(url, {
     ...options,
     headers,
-    credentials: 'include' // Sends httpOnly cookies
+    credentials: 'include' // Sends httpOnly cookies when supported
   });
 
   const contentType = response.headers.get('content-type');
@@ -60,6 +141,17 @@ export async function request(endpoint, options = {}) {
     data = await response.json();
   } else {
     data = { error: await response.text() };
+  }
+
+  // Persist tokens across page reloads and cross-site responses
+  if (data && data.token) {
+    if (endpoint.includes('/admin')) {
+      setAdminToken(data.token);
+    } else if (endpoint.includes('/professionals')) {
+      setProToken(data.token);
+    } else {
+      setApiToken(data.token);
+    }
   }
 
   if (!response.ok) {
@@ -113,6 +205,7 @@ export async function rotateIdentity() {
 }
 
 export async function leaveSession() {
+  setApiToken(null);
   return await request('/auth/leave', { method: 'POST' });
 }
 
@@ -359,6 +452,7 @@ export async function loginProfessional(payload) {
 }
 
 export async function logoutProfessional() {
+  setProToken(null);
   return await request('/professionals/logout', {
     method: 'POST'
   });
@@ -448,6 +542,7 @@ export async function adminLogin({ email, password }) {
 }
 
 export async function adminLogout() {
+  setAdminToken(null);
   return await request('/admin/logout', { method: 'POST' });
 }
 

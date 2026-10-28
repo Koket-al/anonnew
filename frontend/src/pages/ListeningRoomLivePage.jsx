@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useRealtime } from '../context/RealtimeContext.jsx';
-import { getListeningRoom, leaveListeningRoom, closeListeningRoom } from '../services/api.js';
+import { getListeningRoom, leaveListeningRoom, closeListeningRoom, getApiToken } from '../services/api.js';
 import ReportModal from '../components/ReportModal.jsx';
 import { io } from 'socket.io-client';
 import {
@@ -58,6 +58,7 @@ export default function ListeningRoomLivePage() {
 
           const socketUrl = import.meta.env.VITE_API_URL || undefined;
           localSocket = io(socketUrl, {
+            auth: { token: getApiToken() },
             withCredentials: true,
             transports: ['websocket', 'polling']
           });

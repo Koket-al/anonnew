@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { useNavigate, useLocation } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext.jsx';
+import { getApiToken } from '../services/api.js';
 import {
   Bell,
   BellOff,
@@ -156,6 +157,7 @@ export function RealtimeProvider({ children }) {
   useEffect(() => {
     const socketUrl = import.meta.env.VITE_API_URL || undefined;
     const socket = io(socketUrl, {
+      auth: { token: getApiToken() },
       withCredentials: true,
       transports: ['websocket', 'polling']
     });
