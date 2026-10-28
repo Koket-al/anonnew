@@ -1,0 +1,35 @@
+{
+  "name": "anon-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "ANON - Anonymous Youth Health & Well-being Platform Backend API",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "NODE_ENV=test node --test tests/api.test.js",
+    "seed": "node src/scripts/seed.js"
+  },
+  "keywords": [
+    "anonymous",
+    "youth-health",
+    "mental-health",
+    "well-being",
+    "peer-support"
+  ],
+  "author": "ANON Team",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.5",
+    "socket.io": "^4.8.1",
+    "xss": "^1.0.15"
+  }
+}
