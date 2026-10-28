@@ -29,3 +29,9 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+node_modules/
+.env
+.env.*
+!.env.example
+dist/
+coverage/
