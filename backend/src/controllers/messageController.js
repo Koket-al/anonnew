@@ -342,6 +342,8 @@ export async function getMessages(req, res, next) {
         senderId: m.sender?._id?.toString(),
         senderUsername: m.sender?.username || 'Anonymous',
         isMine: m.sender?._id?.toString() === currentId.toString(),
+        isEdited: Boolean(m.isEdited),
+        editedAt: m.editedAt || null,
         readAt: m.readAt,
         createdAt: m.createdAt
       }))
@@ -437,6 +439,8 @@ export async function sendMessage(req, res, next) {
         content: message.content,
         senderId: currentId.toString(),
         senderUsername: req.identity.username,
+        isEdited: false,
+        editedAt: null,
         readAt: null,
         createdAt: message.createdAt
       };
@@ -470,6 +474,8 @@ export async function sendMessage(req, res, next) {
         senderId: currentId.toString(),
         senderUsername: req.identity.username,
         isMine: true,
+        isEdited: false,
+        editedAt: null,
         readAt: null,
         createdAt: message.createdAt
       }
@@ -571,6 +577,92 @@ export async function deleteMessage(req, res, next) {
       success: true,
       messageId,
       message: 'Message deleted successfully.'
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateMessage(req, res, next) {
+  try {
+    const messageId = req.params.messageId || req.params.id;
+    const { content } = req.body;
+    const currentId = req.identity._id;
+
+    if (!content || typeof content !== 'string' || !content.trim()) {
+      return res.status(400).json({ success: false, error: 'Message content cannot be empty.' });
+    }
+
+    const message = await Message.findById(messageId);
+    if (!message) {
+      return res.status(404).json({ success: false, error: 'Message not found.' });
+    }
+
+    if (message.sender.toString() !== currentId.toString()) {
+      return res.status(403).json({ success: false, error: 'You can only edit your own messages.' });
+    }
+
+    const conversation = await Conversation.findById(message.conversation);
+    if (!conversation) {
+      return res.status(404).json({ success: false, error: 'Conversation not found.' });
+    }
+
+    if (conversation.status !== 'accepted') {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot edit message. Conversation status is "${conversation.status}".`
+      });
+    }
+
+    const sanitizedContent = xss(content.trim().slice(0, 3000));
+    message.content = sanitizedContent;
+    message.isEdited = true;
+    message.editedAt = new Date();
+    await message.save();
+
+    // If this was the last message, update conversation lastMessage text preview
+    const lastMsg = await Message.findOne({ conversation: conversation._id }).sort({ createdAt: -1 });
+    if (lastMsg && lastMsg._id.toString() === message._id.toString()) {
+      conversation.lastMessage = {
+        text: sanitizedContent.slice(0, 100),
+        sender: lastMsg.sender,
+        createdAt: lastMsg.createdAt
+      };
+      conversation.updatedAt = new Date();
+      await conversation.save();
+    }
+
+    const updatedPayload = {
+      id: message._id.toString(),
+      conversationId: conversation._id.toString(),
+      content: message.content,
+      senderId: currentId.toString(),
+      senderUsername: req.identity.username,
+      isEdited: true,
+      editedAt: message.editedAt,
+      readAt: message.readAt,
+      createdAt: message.createdAt
+    };
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`conversation:${conversation._id}`).emit('message_edited', updatedPayload);
+
+      const recipientId = conversation.participants.find(p => p.toString() !== currentId.toString());
+      if (recipientId) {
+        io.to(`user:${recipientId}`).emit('conversation_updated', {
+          conversationId: conversation._id.toString(),
+          lastMessage: updatedPayload
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: {
+        ...updatedPayload,
+        isMine: true
+      }
     });
   } catch (error) {
     next(error);

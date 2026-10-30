@@ -134,6 +134,8 @@ export async function listPosts(req, res, next) {
         beenThroughThisCount: p.beenThroughThisCount,
         hasMarkedBeenThroughThis: currentUserId && p.beenThroughThisUsers?.some(u => u.toString() === currentUserId),
         replyCount: p.replyCount,
+        isEdited: Boolean(p.isEdited),
+        editedAt: p.editedAt || null,
         createdAt: p.createdAt,
         lastActivityAt: p.lastActivityAt
       };
@@ -365,6 +367,8 @@ export async function getPost(req, res, next) {
         beenThroughThisCount: post.beenThroughThisCount,
         hasMarkedBeenThroughThis: currentUserId && post.beenThroughThisUsers?.some(u => u.toString() === currentUserId),
         replyCount: post.replyCount,
+        isEdited: Boolean(post.isEdited),
+        editedAt: post.editedAt || null,
         createdAt: post.createdAt,
         lastActivityAt: post.lastActivityAt
       },
@@ -393,6 +397,8 @@ export async function getPost(req, res, next) {
           isCommunityOwner,
           canDelete: isOwnReply || isCommunityOwner,
           isExperienceShare: r.isExperienceShare,
+          isEdited: Boolean(r.isEdited),
+          editedAt: r.editedAt || null,
           createdAt: r.createdAt
         };
       })
@@ -702,6 +708,124 @@ export async function deleteReply(req, res, next) {
       success: true,
       replyId: reply._id,
       message: 'Reply deleted successfully.'
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updatePost(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { title, content } = req.body;
+    const currentUserId = req.identity._id.toString();
+
+    const post = await Post.findById(id).populate('community', 'creator');
+    if (!post || post.isDeleted) {
+      return res.status(404).json({ success: false, error: 'Post not found or has been removed.' });
+    }
+
+    if (post.author.toString() !== currentUserId) {
+      return res.status(403).json({ success: false, error: 'You can only edit your own post.' });
+    }
+
+    if (title !== undefined) {
+      if (!title || !title.trim()) {
+        return res.status(400).json({ success: false, error: 'Title cannot be empty.' });
+      }
+      post.title = xss(title.trim().slice(0, 200));
+    }
+
+    if (content !== undefined) {
+      if (!content || !content.trim()) {
+        return res.status(400).json({ success: false, error: 'Content cannot be empty.' });
+      }
+      post.content = xss(content.trim().slice(0, 5000));
+    }
+
+    post.isEdited = true;
+    post.editedAt = new Date();
+    await post.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      const updatePayload = {
+        postId: post._id.toString(),
+        title: post.title,
+        content: post.content,
+        isEdited: true,
+        editedAt: post.editedAt
+      };
+      io.to(`post:${post._id}`).emit('post_edited', updatePayload);
+      if (post.community) {
+        io.to(`community:${post.community._id || post.community}`).emit('post_edited', updatePayload);
+      } else {
+        io.to('posts_stream').emit('post_edited', updatePayload);
+      }
+    }
+
+    res.json({
+      success: true,
+      post: {
+        id: post._id,
+        title: post.title,
+        content: post.content,
+        isEdited: post.isEdited,
+        editedAt: post.editedAt
+      },
+      message: 'Post updated successfully.'
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateReply(req, res, next) {
+  try {
+    const replyId = req.params.replyId || req.params.id;
+    const { content } = req.body;
+    const currentUserId = req.identity._id.toString();
+
+    if (!content || typeof content !== 'string' || !content.trim()) {
+      return res.status(400).json({ success: false, error: 'Reply content cannot be empty.' });
+    }
+
+    const reply = await Reply.findById(replyId).populate('post');
+    if (!reply || reply.isDeleted) {
+      return res.status(404).json({ success: false, error: 'Reply not found or has been removed.' });
+    }
+
+    if (reply.author.toString() !== currentUserId) {
+      return res.status(403).json({ success: false, error: 'You can only edit your own reply.' });
+    }
+
+    const sanitizedContent = xss(content.trim().slice(0, 2500));
+    reply.content = sanitizedContent;
+    reply.isEdited = true;
+    reply.editedAt = new Date();
+    await reply.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      const replyPayload = {
+        replyId: reply._id.toString(),
+        postId: reply.post._id.toString(),
+        content: reply.content,
+        isEdited: true,
+        editedAt: reply.editedAt
+      };
+      io.to(`post:${reply.post._id}`).emit('reply_edited', replyPayload);
+    }
+
+    res.json({
+      success: true,
+      reply: {
+        id: reply._id,
+        content: reply.content,
+        isEdited: reply.isEdited,
+        editedAt: reply.editedAt
+      },
+      message: 'Reply updated successfully.'
     });
   } catch (error) {
     next(error);

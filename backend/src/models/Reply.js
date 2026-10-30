@@ -24,6 +24,14 @@ const replySchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    isEdited: {
+      type: Boolean,
+      default: false
+    },
+    editedAt: {
+      type: Date,
+      default: null
+    },
     isDeleted: {
       type: Boolean,
       default: false

@@ -5,9 +5,10 @@ import {
   listConversations,
   getMessages,
   sendMessage,
+  updateMessage,
+  deleteMessage,
   blockUser,
-  closeConversation,
-  deleteMessage
+  closeConversation
 } from '../controllers/messageController.js';
 import { requireAnonymousAuth } from '../middleware/auth.js';
 import { postRateLimiter } from '../middleware/rateLimiter.js';
@@ -21,6 +22,10 @@ router.post('/request', postRateLimiter, requestConversation);
 router.post('/:id/respond', respondToRequest);
 router.get('/:id/messages', getMessages);
 router.post('/:id/messages', postRateLimiter, sendMessage);
+router.patch('/message/:messageId', postRateLimiter, updateMessage);
+router.patch('/:id/messages/:messageId', postRateLimiter, updateMessage);
+router.put('/message/:messageId', postRateLimiter, updateMessage);
+router.put('/:id/messages/:messageId', postRateLimiter, updateMessage);
 router.delete('/message/:messageId', deleteMessage);
 router.delete('/:id/messages/:messageId', deleteMessage);
 router.post('/block', blockUser);

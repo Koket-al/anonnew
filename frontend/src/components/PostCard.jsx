@@ -63,6 +63,11 @@ export default function PostCard({ post, onReport, onConnectRequest, onDeletePos
         <div className="crowd-card-time">
           <Clock size={12} />
           <span>{formattedDate}</span>
+          {post.isEdited && (
+            <span className="mono-subtle" style={{ fontSize: '0.7rem', color: '#71717A', fontStyle: 'italic', marginLeft: 4 }}>
+              (edited)
+            </span>
+          )}
         </div>
       </div>
 

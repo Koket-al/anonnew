@@ -51,6 +51,14 @@ const postSchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
+    isEdited: {
+      type: Boolean,
+      default: false
+    },
+    editedAt: {
+      type: Date,
+      default: null
+    },
     isDeleted: {
       type: Boolean,
       default: false,

@@ -9,6 +9,7 @@ import {
   respondToConversationRequest,
   blockUser,
   closeConversation,
+  updateMessage as apiUpdateMessage,
   deleteMessage
 } from '../services/api.js';
 import ReportModal from '../components/ReportModal.jsx';
@@ -26,7 +27,8 @@ import {
   Archive,
   Shield,
   ArrowRight,
-  Trash2
+  Trash2,
+  Pencil
 } from 'lucide-react';
 
 export default function PrivateMessagesPage() {
@@ -40,6 +42,11 @@ export default function PrivateMessagesPage() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+
+  // Message Editing state
+  const [editingMessageId, setEditingMessageId] = useState(null);
+  const [editContent, setEditContent] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // Modals
   const [reportState, setReportState] = useState({ isOpen: false, targetType: '', targetId: '', targetTitle: '' });
@@ -151,6 +158,27 @@ export default function PrivateMessagesPage() {
       loadConversations();
     };
 
+    const handleMessageEdited = (payload) => {
+      const msgConvId = String(payload.conversationId);
+      const currentActive = activeConvIdRef.current ? String(activeConvIdRef.current) : null;
+      if (currentActive && msgConvId === currentActive) {
+        setMessages((prev) =>
+          prev.map((m) => {
+            if (String(m.id) === String(payload.id)) {
+              return {
+                ...m,
+                content: payload.content,
+                isEdited: true,
+                editedAt: payload.editedAt
+              };
+            }
+            return m;
+          })
+        );
+      }
+      loadConversations();
+    };
+
     const handleConversationUpdated = () => {
       loadConversations();
     };
@@ -174,6 +202,7 @@ export default function PrivateMessagesPage() {
     socket.on('new_message', handleNewMessage);
     socket.on('messages_read', handleMessagesRead);
     socket.on('message_deleted', handleMessageDeleted);
+    socket.on('message_edited', handleMessageEdited);
     socket.on('conversation_updated', handleConversationUpdated);
     socket.on('connection_request_received', handleConnectionReceived);
     socket.on('connection_request_sent', handleConnectionSent);
@@ -184,6 +213,7 @@ export default function PrivateMessagesPage() {
       socket.off('new_message', handleNewMessage);
       socket.off('messages_read', handleMessagesRead);
       socket.off('message_deleted', handleMessageDeleted);
+      socket.off('message_edited', handleMessageEdited);
       socket.off('conversation_updated', handleConversationUpdated);
       socket.off('connection_request_received', handleConnectionReceived);
       socket.off('connection_request_sent', handleConnectionSent);
@@ -284,6 +314,50 @@ export default function PrivateMessagesPage() {
       showToast({ type: 'info', message: 'Message deleted.' });
     } catch (err) {
       showToast({ type: 'error', message: err.message || 'Failed to delete message.' });
+    }
+  }
+
+  function startEditingMessage(msg) {
+    setEditingMessageId(msg.id);
+    setEditContent(msg.content);
+  }
+
+  function cancelEditingMessage() {
+    setEditingMessageId(null);
+    setEditContent('');
+  }
+
+  async function handleSaveEdit(messageId) {
+    if (!editContent.trim()) {
+      showToast({ type: 'warning', message: 'Message content cannot be empty.' });
+      return;
+    }
+
+    setSavingEdit(true);
+    try {
+      const res = await apiUpdateMessage(messageId, editContent.trim());
+      if (res && res.message) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            String(m.id) === String(messageId)
+              ? {
+                  ...m,
+                  content: res.message.content,
+                  isEdited: true,
+                  editedAt: res.message.editedAt
+                }
+              : m
+          )
+        );
+      }
+      setEditingMessageId(null);
+      setEditContent('');
+      loadConversations();
+      showToast({ type: 'success', message: 'Message updated.' });
+    } catch (err) {
+      showToast({ type: 'error', message: err.message || 'Failed to update message.' });
+    } finally {
+      setSavingEdit(false);
     }
   }
 
@@ -605,25 +679,99 @@ export default function PrivateMessagesPage() {
                           {m.senderUsername || activeConv.partner?.username}
                         </span>
                       )}
-                      <div
-                        style={{
-                          maxWidth: '75%',
-                          padding: '12px 16px',
-                          borderRadius: 14,
-                          fontSize: '0.9375rem',
-                          lineHeight: 1.55,
-                          background: m.isMine ? '#141413' : '#F4F4F5',
-                          color: m.isMine ? '#FFFFFF' : '#141413',
-                          border: m.isMine ? 'none' : '1px solid var(--border-light)',
-                          whiteSpace: 'pre-line'
-                        }}
-                      >
-                        {m.content}
-                      </div>
+                      {editingMessageId === m.id ? (
+                        <div
+                          style={{
+                            maxWidth: '85%',
+                            width: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 8,
+                            alignItems: 'flex-end',
+                            background: '#F4F4F5',
+                            padding: 10,
+                            borderRadius: 14,
+                            border: '1px solid var(--border-light)'
+                          }}
+                        >
+                          <textarea
+                            className="form-input"
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSaveEdit(m.id);
+                              } else if (e.key === 'Escape') {
+                                cancelEditingMessage();
+                              }
+                            }}
+                            rows={3}
+                            maxLength={3000}
+                            disabled={savingEdit}
+                            style={{
+                              width: '100%',
+                              padding: '10px 12px',
+                              borderRadius: 10,
+                              fontSize: '0.9rem',
+                              lineHeight: 1.5,
+                              resize: 'vertical',
+                              background: '#FFFFFF',
+                              color: '#141413'
+                            }}
+                            autoFocus
+                          />
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button
+                              type="button"
+                              className="crowd-pill-btn"
+                              onClick={cancelEditingMessage}
+                              disabled={savingEdit}
+                              style={{ padding: '3px 10px', fontSize: '0.75rem' }}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-black-pill"
+                              onClick={() => handleSaveEdit(m.id)}
+                              disabled={savingEdit || !editContent.trim()}
+                              style={{ padding: '3px 12px', fontSize: '0.75rem' }}
+                            >
+                              {savingEdit ? 'Saving...' : 'Save'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            maxWidth: '75%',
+                            padding: '12px 16px',
+                            borderRadius: 14,
+                            fontSize: '0.9375rem',
+                            lineHeight: 1.55,
+                            background: m.isMine ? '#141413' : '#F4F4F5',
+                            color: m.isMine ? '#FFFFFF' : '#141413',
+                            border: m.isMine ? 'none' : '1px solid var(--border-light)',
+                            whiteSpace: 'pre-line'
+                          }}
+                        >
+                          {m.content}
+                        </div>
+                      )}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
                         <span className="mono-subtle" style={{ fontSize: '0.68rem', color: '#71717A' }}>
                           {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
+                        {m.isEdited && (
+                          <span
+                            className="mono-subtle"
+                            style={{ fontSize: '0.65rem', color: '#9CA3AF', fontStyle: 'italic' }}
+                            title={m.editedAt ? `Edited ${new Date(m.editedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Edited'}
+                          >
+                            (edited)
+                          </span>
+                        )}
                         {m.isMine && (
                           <span
                             style={{ display: 'inline-flex', alignItems: 'center' }}
@@ -636,25 +784,45 @@ export default function PrivateMessagesPage() {
                             )}
                           </span>
                         )}
-                        {m.isMine && (
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteMessage(m.id)}
-                            title="Delete message"
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              cursor: 'pointer',
-                              color: '#A1A1AA',
-                              padding: 2,
-                              display: 'flex',
-                              alignItems: 'center'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = '#DC2626'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = '#A1A1AA'}
-                          >
-                            <Trash2 size={11} />
-                          </button>
+                        {m.isMine && editingMessageId !== m.id && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => startEditingMessage(m)}
+                              title="Edit message"
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: '#A1A1AA',
+                                padding: 2,
+                                display: 'flex',
+                                alignItems: 'center'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = '#2563EB'}
+                              onMouseLeave={(e) => e.currentTarget.style.color = '#A1A1AA'}
+                            >
+                              <Pencil size={11} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteMessage(m.id)}
+                              title="Delete message"
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: '#A1A1AA',
+                                padding: 2,
+                                display: 'flex',
+                                alignItems: 'center'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = '#DC2626'}
+                              onMouseLeave={(e) => e.currentTarget.style.color = '#A1A1AA'}
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>

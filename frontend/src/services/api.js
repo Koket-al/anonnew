@@ -306,9 +306,23 @@ export async function createReply(postId, payload) {
   });
 }
 
+export async function updatePost(postId, payload) {
+  return await request(`/posts/${postId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function deletePost(postId) {
   return await request(`/posts/${postId}`, {
     method: 'DELETE'
+  });
+}
+
+export async function updateReply(replyId, payload) {
+  return await request(`/posts/replies/${replyId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
   });
 }
 
@@ -351,6 +365,13 @@ export async function getMessages(convId) {
 export async function sendMessage(convId, content) {
   return await request(`/messages/${convId}/messages`, {
     method: 'POST',
+    body: JSON.stringify({ content })
+  });
+}
+
+export async function updateMessage(messageId, content) {
+  return await request(`/messages/message/${messageId}`, {
+    method: 'PATCH',
     body: JSON.stringify({ content })
   });
 }

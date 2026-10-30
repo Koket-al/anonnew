@@ -304,6 +304,62 @@ export function setupSocketIO(io) {
       }
     });
 
+    // ── Real-time private message edit ───────────────────────────────────────
+    socket.on('edit_private_message', async ({ conversationId, messageId, content } = {}) => {
+      try {
+        if (!userId || !socket.identity) return;
+        if (!content || !content.trim()) return;
+        if (!messageId || !/^[0-9a-fA-F]{24}$/.test(messageId)) return;
+
+        const message = await Message.findById(messageId);
+        if (!message || message.sender.toString() !== userId) return;
+
+        const conv = await Conversation.findById(message.conversation);
+        if (!conv || conv.status !== 'accepted') return;
+
+        const cleanContent = xss(content.trim().slice(0, 3000));
+        message.content = cleanContent;
+        message.isEdited = true;
+        message.editedAt = new Date();
+        await message.save();
+
+        const lastMsg = await Message.findOne({ conversation: conv._id }).sort({ createdAt: -1 });
+        if (lastMsg && lastMsg._id.toString() === message._id.toString()) {
+          conv.lastMessage = {
+            text: cleanContent.slice(0, 100),
+            sender: lastMsg.sender,
+            createdAt: lastMsg.createdAt
+          };
+          conv.updatedAt = new Date();
+          await conv.save();
+        }
+
+        const updatedPayload = {
+          id: message._id.toString(),
+          conversationId: conv._id.toString(),
+          content: message.content,
+          senderId: userId,
+          senderUsername: username,
+          isEdited: true,
+          editedAt: message.editedAt,
+          readAt: message.readAt,
+          createdAt: message.createdAt
+        };
+
+        io.to(`conversation:${conv._id}`).emit('message_edited', updatedPayload);
+
+        const recipientId = conv.participants.find(p => p.toString() !== userId);
+        if (recipientId) {
+          io.to(`user:${recipientId}`).emit('conversation_updated', {
+            conversationId: conv._id.toString(),
+            lastMessage: updatedPayload
+          });
+        }
+      } catch (err) {
+        console.error('[Socket edit_private_message error]:', err.message);
+      }
+    });
+
     // ── Real-time read receipts ──────────────────────────────────────────────
     socket.on('mark_messages_read', async ({ conversationId } = {}) => {
       try {

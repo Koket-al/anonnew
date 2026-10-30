@@ -2,7 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useRealtime } from '../context/RealtimeContext.jsx';
-import { getPost, createReply, toggleBeenThroughThis, deletePost, deleteReply, joinCommunity } from '../services/api.js';
+import {
+  getPost,
+  createReply,
+  toggleBeenThroughThis,
+  updatePost,
+  deletePost,
+  updateReply,
+  deleteReply,
+  joinCommunity
+} from '../services/api.js';
 import ReportModal from '../components/ReportModal.jsx';
 import ConnectModal from '../components/ConnectModal.jsx';
 import {
@@ -17,7 +26,8 @@ import {
   Lock,
   Shield,
   Trash2,
-  Plus
+  Plus,
+  Pencil
 } from 'lucide-react';
 
 export default function PostDetailPage() {
@@ -38,6 +48,17 @@ export default function PostDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [marked, setMarked] = useState(false);
   const [count, setCount] = useState(0);
+
+  // Post Editing state
+  const [isEditingPost, setIsEditingPost] = useState(false);
+  const [editPostTitle, setEditPostTitle] = useState('');
+  const [editPostContent, setEditPostContent] = useState('');
+  const [savingPostEdit, setSavingPostEdit] = useState(false);
+
+  // Reply Editing state
+  const [editingReplyId, setEditingReplyId] = useState(null);
+  const [editReplyContent, setEditReplyContent] = useState('');
+  const [savingReplyEdit, setSavingReplyEdit] = useState(false);
 
   // Modals
   const [reportState, setReportState] = useState({ isOpen: false, targetType: '', targetId: '', targetTitle: '' });
@@ -83,17 +104,43 @@ export default function PostDetailPage() {
       }
     };
 
+    const handlePostEdited = (data) => {
+      if (data.postId === id) {
+        setPost((prev) => (prev ? {
+          ...prev,
+          title: data.title !== undefined ? data.title : prev.title,
+          content: data.content !== undefined ? data.content : prev.content,
+          isEdited: true,
+          editedAt: data.editedAt
+        } : prev));
+      }
+    };
+
+    const handleReplyEdited = (data) => {
+      setReplies((prev) =>
+        prev.map((r) =>
+          r.id === data.replyId
+            ? { ...r, content: data.content, isEdited: true, editedAt: data.editedAt }
+            : r
+        )
+      );
+    };
+
     socket.on('new_reply', handleNewReply);
     socket.on('reply_deleted', handleReplyDeleted);
+    socket.on('reply_edited', handleReplyEdited);
     socket.on('post_reaction_updated', handleReactionUpdated);
     socket.on('post_deleted', handlePostDeleted);
+    socket.on('post_edited', handlePostEdited);
 
     return () => {
       socket.emit('leave_post', { postId: id });
       socket.off('new_reply', handleNewReply);
       socket.off('reply_deleted', handleReplyDeleted);
+      socket.off('reply_edited', handleReplyEdited);
       socket.off('post_reaction_updated', handleReactionUpdated);
       socket.off('post_deleted', handlePostDeleted);
+      socket.off('post_edited', handlePostEdited);
     };
   }, [socket, id, identity?.id || identity?._id]);
 
@@ -260,6 +307,86 @@ export default function PostDetailPage() {
     }
   }
 
+  function startEditingPost() {
+    setIsEditingPost(true);
+    setEditPostTitle(post.title);
+    setEditPostContent(post.content);
+  }
+
+  function cancelEditingPost() {
+    setIsEditingPost(false);
+    setEditPostTitle('');
+    setEditPostContent('');
+  }
+
+  async function handleSavePostEdit() {
+    if (!editPostTitle.trim() || !editPostContent.trim()) {
+      showToast({ type: 'warning', message: 'Title and content cannot be empty.' });
+      return;
+    }
+
+    setSavingPostEdit(true);
+    try {
+      const res = await updatePost(id, {
+        title: editPostTitle.trim(),
+        content: editPostContent.trim()
+      });
+      if (res && res.post) {
+        setPost((prev) => ({
+          ...prev,
+          title: res.post.title,
+          content: res.post.content,
+          isEdited: true,
+          editedAt: res.post.editedAt
+        }));
+      }
+      setIsEditingPost(false);
+      showToast({ type: 'success', message: 'Question updated successfully.' });
+    } catch (err) {
+      showToast({ type: 'error', message: err.message || 'Failed to update question.' });
+    } finally {
+      setSavingPostEdit(false);
+    }
+  }
+
+  function startEditingReply(reply) {
+    setEditingReplyId(reply.id);
+    setEditReplyContent(reply.content);
+  }
+
+  function cancelEditingReply() {
+    setEditingReplyId(null);
+    setEditReplyContent('');
+  }
+
+  async function handleSaveReplyEdit(replyId) {
+    if (!editReplyContent.trim()) {
+      showToast({ type: 'warning', message: 'Reply cannot be empty.' });
+      return;
+    }
+
+    setSavingReplyEdit(true);
+    try {
+      const res = await updateReply(replyId, { content: editReplyContent.trim() });
+      if (res && res.reply) {
+        setReplies((prev) =>
+          prev.map((r) =>
+            r.id === replyId
+              ? { ...r, content: res.reply.content, isEdited: true, editedAt: res.reply.editedAt }
+              : r
+          )
+        );
+      }
+      setEditingReplyId(null);
+      setEditReplyContent('');
+      showToast({ type: 'success', message: 'Reply updated successfully.' });
+    } catch (err) {
+      showToast({ type: 'error', message: err.message || 'Failed to update reply.' });
+    } finally {
+      setSavingReplyEdit(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="home-page-container crowd-page-container" style={{ padding: '80px 24px', textAlign: 'center' }}>
@@ -393,16 +520,68 @@ export default function PostDetailPage() {
           <div className="crowd-card-time">
             <Clock size={12} />
             <span>{formattedDate}</span>
+            {post.isEdited && (
+              <span className="mono-subtle" style={{ fontSize: '0.7rem', color: '#71717A', fontStyle: 'italic', marginLeft: 4 }}>
+                (edited)
+              </span>
+            )}
           </div>
         </div>
 
-        <h1 className="crowd-card-title" style={{ fontSize: 'clamp(1.5rem, 3vw, 2.1rem)', marginBottom: 18 }}>
-          {post.title}
-        </h1>
+        {isEditingPost ? (
+          <div style={{ marginBottom: 28, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <label className="mono-subtle" style={{ display: 'block', marginBottom: 4, color: '#71717A' }}>TITLE</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editPostTitle}
+                onChange={(e) => setEditPostTitle(e.target.value)}
+                maxLength={200}
+                style={{ width: '100%', fontSize: '1.25rem', fontWeight: 600 }}
+              />
+            </div>
+            <div>
+              <label className="mono-subtle" style={{ display: 'block', marginBottom: 4, color: '#71717A' }}>CONTENT</label>
+              <textarea
+                className="form-input"
+                value={editPostContent}
+                onChange={(e) => setEditPostContent(e.target.value)}
+                rows={6}
+                maxLength={5000}
+                style={{ width: '100%', fontSize: '1rem', lineHeight: 1.6 }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="crowd-pill-btn"
+                onClick={cancelEditingPost}
+                disabled={savingPostEdit}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-black-pill"
+                onClick={handleSavePostEdit}
+                disabled={savingPostEdit || !editPostTitle.trim() || !editPostContent.trim()}
+              >
+                {savingPostEdit ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <h1 className="crowd-card-title" style={{ fontSize: 'clamp(1.5rem, 3vw, 2.1rem)', marginBottom: 18 }}>
+              {post.title}
+            </h1>
 
-        <div className="crowd-detail-body" style={{ fontSize: '1.025rem', lineHeight: 1.75, color: '#27272A', marginBottom: 28, whiteSpace: 'pre-line' }}>
-          {post.content}
-        </div>
+            <div className="crowd-detail-body" style={{ fontSize: '1.025rem', lineHeight: 1.75, color: '#27272A', marginBottom: 28, whiteSpace: 'pre-line' }}>
+              {post.content}
+            </div>
+          </>
+        )}
 
         <div className="crowd-card-footer">
           <div className="crowd-card-author-section">
@@ -446,6 +625,19 @@ export default function PostDetailPage() {
           </div>
 
           <div className="crowd-card-actions">
+            {post.isOwnPost && !isEditingPost && (
+              <button
+                type="button"
+                className="crowd-pill-btn"
+                style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                onClick={startEditingPost}
+                title="Edit your question"
+              >
+                <Pencil size={13} />
+                <span>Edit</span>
+              </button>
+            )}
+
             {(post.isOwnPost || post.canDelete || post.isCommunityOwner) && (
               <button
                 type="button"
@@ -617,9 +809,26 @@ export default function PostDetailPage() {
                         </span>
                       )}
                       <span className="crowd-card-time">&bull; {rDate}</span>
+                      {reply.isEdited && (
+                        <span className="mono-subtle" style={{ fontSize: '0.68rem', color: '#71717A', fontStyle: 'italic', marginLeft: 4 }}>
+                          (edited)
+                        </span>
+                      )}
                     </div>
 
                     <div style={{ display: 'flex', gap: 6 }}>
+                      {reply.isOwnReply && editingReplyId !== reply.id && (
+                        <button
+                          type="button"
+                          className="crowd-pill-btn"
+                          style={{ padding: '2px 8px', fontSize: '0.72rem' }}
+                          onClick={() => startEditingReply(reply)}
+                          title="Edit your reply"
+                        >
+                          <Pencil size={11} />
+                          <span>Edit</span>
+                        </button>
+                      )}
                       {(reply.isOwnReply || reply.canDelete || post.isCommunityOwner) && (
                         <button
                           type="button"
@@ -668,9 +877,44 @@ export default function PostDetailPage() {
                     </div>
                   </div>
 
-                  <div style={{ fontSize: '0.95rem', lineHeight: 1.65, color: '#3F3F46', whiteSpace: 'pre-line' }}>
-                    {reply.content}
-                  </div>
+                  {editingReplyId === reply.id ? (
+                    <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <textarea
+                        className="form-input"
+                        value={editReplyContent}
+                        onChange={(e) => setEditReplyContent(e.target.value)}
+                        rows={3}
+                        maxLength={2500}
+                        disabled={savingReplyEdit}
+                        style={{ width: '100%', fontSize: '0.95rem', lineHeight: 1.6 }}
+                        autoFocus
+                      />
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <button
+                          type="button"
+                          className="crowd-pill-btn"
+                          onClick={cancelEditingReply}
+                          disabled={savingReplyEdit}
+                          style={{ padding: '3px 10px', fontSize: '0.75rem' }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-black-pill"
+                          onClick={() => handleSaveReplyEdit(reply.id)}
+                          disabled={savingReplyEdit || !editReplyContent.trim()}
+                          style={{ padding: '3px 12px', fontSize: '0.75rem' }}
+                        >
+                          {savingReplyEdit ? 'Saving...' : 'Save'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '0.95rem', lineHeight: 1.65, color: '#3F3F46', whiteSpace: 'pre-line' }}>
+                      {reply.content}
+                    </div>
+                  )}
                 </article>
               );
             })}

@@ -1252,4 +1252,156 @@ describe('ANON Backend API Tests', () => {
     const afterDirData = await afterDirRes.json();
     assert.ok(!afterDirData.professionals.some(p => p.id === createdId));
   });
+
+  test('35. Standalone Message Editing - Author can edit message, non-author cannot, empty rejected', async () => {
+    // 1. User 1 sends message to User 2
+    const sendRes = await fetch(`${baseURL}/api/messages/${testConversationId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-anon-token': user1Token
+      },
+      body: JSON.stringify({ content: 'Original message content before edit' })
+    });
+    assert.equal(sendRes.status, 201);
+    const sendData = await sendRes.json();
+    const msgId = sendData.message.id;
+    assert.equal(sendData.message.isEdited, false);
+
+    // 2. User 2 (recipient, non-author) attempts to edit User 1's message -> must be rejected with 403
+    const unauthorizedEditRes = await fetch(`${baseURL}/api/messages/message/${msgId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-anon-token': user2Token
+      },
+      body: JSON.stringify({ content: 'Hacked content by recipient' })
+    });
+    assert.equal(unauthorizedEditRes.status, 403);
+
+    // 3. User 1 attempts to edit with empty string -> must fail with 400
+    const emptyEditRes = await fetch(`${baseURL}/api/messages/message/${msgId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-anon-token': user1Token
+      },
+      body: JSON.stringify({ content: '   ' })
+    });
+    assert.equal(emptyEditRes.status, 400);
+
+    // 4. User 1 (author) edits message with valid updated content -> succeeds with 200
+    const editRes = await fetch(`${baseURL}/api/messages/message/${msgId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-anon-token': user1Token
+      },
+      body: JSON.stringify({ content: 'Corrected message content after editorial edit' })
+    });
+    assert.equal(editRes.status, 200);
+    const editData = await editRes.json();
+    assert.equal(editData.success, true);
+    assert.equal(editData.message.content, 'Corrected message content after editorial edit');
+    assert.equal(editData.message.isEdited, true);
+    assert.ok(editData.message.editedAt);
+
+    // 5. Verify message in conversation listing reflects edited text and isEdited flag
+    const listRes = await fetch(`${baseURL}/api/messages/${testConversationId}/messages`, {
+      headers: { 'x-anon-token': user1Token }
+    });
+    const listData = await listRes.json();
+    const fetchedMsg = listData.messages.find(m => m.id === msgId);
+    assert.ok(fetchedMsg);
+    assert.equal(fetchedMsg.content, 'Corrected message content after editorial edit');
+    assert.equal(fetchedMsg.isEdited, true);
+  });
+
+  test('36. Standalone Post and Reply Editing - Author can edit post and reply, non-author cannot', async () => {
+    // 1. User 1 creates post
+    const postRes = await fetch(`${baseURL}/api/posts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-anon-token': user1Token
+      },
+      body: JSON.stringify({
+        title: 'Original Post Title',
+        content: 'Original post content describing a challenge.',
+        category: 'Personal Growth'
+      })
+    });
+    assert.equal(postRes.status, 201);
+    const postData = await postRes.json();
+    const testPostId = postData.post.id;
+
+    // 2. User 2 (non-author) attempts to edit User 1's post -> rejected 403
+    const failPostEdit = await fetch(`${baseURL}/api/posts/${testPostId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-anon-token': user2Token
+      },
+      body: JSON.stringify({ title: 'Malicious title change' })
+    });
+    assert.equal(failPostEdit.status, 403);
+
+    // 3. User 1 edits their post -> succeeds 200
+    const editPostRes = await fetch(`${baseURL}/api/posts/${testPostId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-anon-token': user1Token
+      },
+      body: JSON.stringify({
+        title: 'Updated Question Title by Author',
+        content: 'Updated post content by author after careful reflection.'
+      })
+    });
+    assert.equal(editPostRes.status, 200);
+    const editPostData = await editPostRes.json();
+    assert.equal(editPostData.post.title, 'Updated Question Title by Author');
+    assert.equal(editPostData.post.content, 'Updated post content by author after careful reflection.');
+    assert.equal(editPostData.post.isEdited, true);
+
+    // 4. User 2 creates reply on post
+    const replyRes = await fetch(`${baseURL}/api/posts/${testPostId}/replies`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-anon-token': user2Token
+      },
+      body: JSON.stringify({
+        content: 'Original reply from user 2'
+      })
+    });
+    assert.equal(replyRes.status, 201);
+    const replyData = await replyRes.json();
+    const testReplyId = replyData.reply.id;
+
+    // 5. User 1 attempts to edit User 2's reply -> rejected 403
+    const failReplyEdit = await fetch(`${baseURL}/api/posts/replies/${testReplyId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-anon-token': user1Token
+      },
+      body: JSON.stringify({ content: 'Attempt to tamper with reply' })
+    });
+    assert.equal(failReplyEdit.status, 403);
+
+    // 6. User 2 edits their own reply -> succeeds 200
+    const editReplyRes = await fetch(`${baseURL}/api/posts/replies/${testReplyId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-anon-token': user2Token
+      },
+      body: JSON.stringify({ content: 'Carefully revised reply from user 2' })
+    });
+    assert.equal(editReplyRes.status, 200);
+    const editReplyData = await editReplyRes.json();
+    assert.equal(editReplyData.reply.content, 'Carefully revised reply from user 2');
+    assert.equal(editReplyData.reply.isEdited, true);
+  });
 });

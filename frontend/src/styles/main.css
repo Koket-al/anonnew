@@ -1981,7 +1981,7 @@ a.link-underline {
 
 .step-item {
   position: relative;
-  background: #FAF9F6;
+  background: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: 14px;
   padding: 34px 28px 26px 28px;
@@ -1999,10 +1999,10 @@ a.link-underline {
 .step-item:focus-within {
   opacity: 1;
   filter: none;
-  background: #FFFFFF;
-  border-color: #141413;
+  background: var(--bg-card-alt);
+  border-color: var(--border-dark);
   transform: translateY(-5px);
-  box-shadow: 0 18px 38px -10px rgba(0, 0, 0, 0.08), 0 0 0 1px #141413;
+  box-shadow: 0 18px 38px -10px rgba(0, 0, 0, 0.08), 0 0 0 1px var(--border-dark);
   outline: none;
 }
 
@@ -2019,7 +2019,7 @@ a.link-underline {
   font-style: italic;
   font-size: 2.35rem;
   font-weight: 500;
-  color: #141413;
+  color: var(--text-main);
   line-height: 1;
   letter-spacing: -0.04em;
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -2036,40 +2036,40 @@ a.link-underline {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.09em;
-  color: #71717A;
+  color: var(--text-muted);
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.03);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border-light);
   transition: all 0.25s ease;
 }
 
 .step-item:hover .step-item-badge,
 .step-item:focus-within .step-item-badge {
-  color: #141413;
-  background: #F4F3EF;
-  border-color: #141413;
+  color: var(--text-main);
+  background: var(--bg-subtle);
+  border-color: var(--border-dark);
 }
 
 .step-item-icon {
   width: 34px;
   height: 34px;
   border-radius: 8px;
-  background: #FFFFFF;
+  background: var(--bg-card);
   border: 1px solid var(--border-light);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #71717A;
+  color: var(--text-muted);
   transition: all 0.25s ease;
   flex-shrink: 0;
 }
 
 .step-item:hover .step-item-icon,
 .step-item:focus-within .step-item-icon {
-  background: #141413;
-  border-color: #141413;
-  color: #FFFFFF;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--bg-page);
   transform: rotate(-4deg);
 }
 
@@ -2090,7 +2090,7 @@ a.link-underline {
 
 .step-item-desc {
   font-size: 0.985rem;
-  color: #52525B;
+  color: var(--text-muted);
   line-height: 1.7;
   margin: 0;
   transition: color 0.25s ease;
@@ -2098,12 +2098,12 @@ a.link-underline {
 
 .step-item:hover .step-item-desc,
 .step-item:focus-within .step-item-desc {
-  color: #18181B;
+  color: var(--text-main);
 }
 
 .step-lead {
   font-weight: 600;
-  color: #141413;
+  color: var(--text-main);
   transition: color 0.2s ease;
 }
 
@@ -2115,23 +2115,23 @@ a.link-underline {
   padding-top: 16px;
   border-top: 1px dashed var(--border-light);
   font-size: 0.8rem;
-  color: #71717A;
+  color: var(--text-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .step-pill {
-  color: #71717A;
+  color: var(--text-muted);
   letter-spacing: 0.02em;
   transition: color 0.2s ease;
 }
 
 .step-item:hover .step-pill,
 .step-item:focus-within .step-pill {
-  color: #141413;
+  color: var(--text-main);
 }
 
 .step-dot {
-  color: #A1A1AA;
+  color: var(--text-light);
 }
 
 /* Subtle reading accent line at bottom of each card */
@@ -2141,7 +2141,7 @@ a.link-underline {
   left: 0;
   right: 0;
   height: 3px;
-  background: #141413;
+  background: var(--primary);
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
@@ -3719,6 +3719,115 @@ a.link-underline {
 
 [data-theme="dark"] .ai-response-content {
   color: var(--text-main);
+}
+
+/* ==========================================================================
+   Dark Theme: How ANON Works in 3 Steps Cards & Elements
+   ========================================================================== */
+[data-theme="dark"] .step-item {
+  background: #141413 !important;
+  border-color: #282724 !important;
+  color: #F4F3EE !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+}
+
+[data-theme="dark"] .step-item:hover,
+[data-theme="dark"] .step-item:focus-within {
+  background: #1C1B19 !important;
+  border-color: #F4F3EE !important;
+  box-shadow: 0 18px 38px -10px rgba(0, 0, 0, 0.65), 0 0 0 1px #F4F3EE !important;
+}
+
+[data-theme="dark"] .step-item-num {
+  color: #F4F3EE !important;
+}
+
+[data-theme="dark"] .step-item-badge {
+  background: #21201D !important;
+  border-color: #2E2D29 !important;
+  color: #A3A198 !important;
+}
+
+[data-theme="dark"] .step-item:hover .step-item-badge,
+[data-theme="dark"] .step-item:focus-within .step-item-badge {
+  background: #2B2A26 !important;
+  border-color: #F4F3EE !important;
+  color: #F4F3EE !important;
+}
+
+[data-theme="dark"] .step-item-icon {
+  background: #21201D !important;
+  border-color: #2E2D29 !important;
+  color: #A3A198 !important;
+}
+
+[data-theme="dark"] .step-item:hover .step-item-icon,
+[data-theme="dark"] .step-item:focus-within .step-item-icon {
+  background: #F4F3EE !important;
+  border-color: #F4F3EE !important;
+  color: #141413 !important;
+}
+
+[data-theme="dark"] .step-item-title {
+  color: #F4F3EE !important;
+}
+
+[data-theme="dark"] .step-item-desc {
+  color: #A3A198 !important;
+}
+
+[data-theme="dark"] .step-item:hover .step-item-desc,
+[data-theme="dark"] .step-item:focus-within .step-item-desc {
+  color: #F4F3EE !important;
+}
+
+[data-theme="dark"] .step-lead {
+  color: #F4F3EE !important;
+}
+
+[data-theme="dark"] .step-item-footer {
+  border-top-color: #282724 !important;
+  color: #A3A198 !important;
+}
+
+[data-theme="dark"] .step-pill {
+  color: #A3A198 !important;
+}
+
+[data-theme="dark"] .step-item:hover .step-pill,
+[data-theme="dark"] .step-item:focus-within .step-pill {
+  color: #F4F3EE !important;
+}
+
+[data-theme="dark"] .step-dot {
+  color: #7E7C74 !important;
+}
+
+[data-theme="dark"] .step-card-accent {
+  background: #F4F3EE !important;
+}
+
+[data-theme="dark"] .faq-lead {
+  color: #F4F3EE !important;
+}
+
+[data-theme="dark"] .faq-filter-btn {
+  background: #181716 !important;
+  border-color: #282724 !important;
+  color: #A3A198 !important;
+}
+
+[data-theme="dark"] .faq-filter-btn:hover {
+  background: #21201D !important;
+  border-color: #F4F3EE !important;
+  color: #F4F3EE !important;
+}
+
+[data-theme="dark"] .faq-filter-btn.active {
+  background: #F4F3EE !important;
+  border-color: #F4F3EE !important;
+  color: #141413 !important;
+  box-shadow: 0 4px 14px rgba(255, 255, 255, 0.12) !important;
 }
 
 
