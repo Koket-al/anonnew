@@ -541,3 +541,23 @@ export async function getAdminPlatformStats(req, res, next) {
     next(error);
   }
 }
+
+/**
+ * GET /api/admin/user-count (public)
+ * Returns aggregate anonymous user population metrics for quick oversight.
+ */
+export async function getPublicUserCount(req, res, next) {
+  try {
+    const totalUsers = await AnonymousSession.countDocuments();
+    const activeUsers24h = await AnonymousSession.countDocuments({
+      lastUsedAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+    });
+    res.json({
+      success: true,
+      totalUsers,
+      activeUsers24h
+    });
+  } catch (error) {
+    next(error);
+  }
+}

@@ -582,6 +582,10 @@ export async function getAdminPlatformStats() {
   return await request('/admin/stats');
 }
 
+export async function getPublicUserCount() {
+  return await request('/admin/user-count');
+}
+
 export async function getAdminPendingProfessionals() {
   return await request('/admin/professionals/pending');
 }

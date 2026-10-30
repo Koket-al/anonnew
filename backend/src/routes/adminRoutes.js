@@ -4,6 +4,7 @@ import {
   adminLogout,
   getAdminMe,
   getAdminPlatformStats,
+  getPublicUserCount,
   getAdminPendingProfessionals,
   getAdminAllProfessionals,
   reviewProfessionalApplication,
@@ -19,6 +20,7 @@ const router = express.Router();
 // Admin login / logout (public)
 router.post('/login', postRateLimiter, adminLogin);
 router.post('/logout', adminLogout);
+router.get('/user-count', getPublicUserCount);
 
 // Protected admin routes
 router.use(requireAdminAuth);

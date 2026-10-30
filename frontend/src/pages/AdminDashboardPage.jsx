@@ -6,6 +6,7 @@ import {
   adminLogout,
   getAdminMe,
   getAdminPlatformStats,
+  getPublicUserCount,
   getAdminPendingProfessionals,
   getAdminAllProfessionals,
   reviewProfessionalApplication,
@@ -55,6 +56,7 @@ export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'pending' | 'verified' | 'add'
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [publicUserCount, setPublicUserCount] = useState(null);
   const [pendingList, setPendingList] = useState([]);
   const [verifiedList, setVerifiedList] = useState([]);
   const [reviewNotes, setReviewNotes] = useState({});
@@ -77,7 +79,19 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     checkAdminAuth();
+    loadPublicCount();
   }, []);
+
+  async function loadPublicCount() {
+    try {
+      const res = await getPublicUserCount();
+      if (res && res.success && typeof res.totalUsers === 'number') {
+        setPublicUserCount(res.totalUsers);
+      }
+    } catch {
+      // ignore
+    }
+  }
 
   async function checkAdminAuth() {
     try {
@@ -293,7 +307,15 @@ export default function AdminDashboardPage() {
             <div className="hero-brand-crest-wrap">
               <img src="/anonlogo_dark.png" alt="ANON" className="hero-page-logo" />
             </div>
-            <span className="manifesto-pill">Administrative Oversight // Clinician Approval</span>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
+              <span className="manifesto-pill">Administrative Oversight // Clinician Approval</span>
+              {publicUserCount !== null && (
+                <span className="crowd-tag-pill highlight" style={{ fontSize: '0.72rem', padding: '3px 10px' }}>
+                  <Users size={12} />
+                  <span>{publicUserCount.toLocaleString()} Users on ANON</span>
+                </span>
+              )}
+            </div>
             <h1 className="editorial-faq-title" style={{ fontSize: 'clamp(2rem, 3.8vw, 2.9rem)' }}>
               Admin Verification Desk
             </h1>
@@ -354,14 +376,22 @@ export default function AdminDashboardPage() {
                   margin: '0 auto 12px auto'
                 }}
               >
-                <Lock size={22} style={{ color: '#141413' }} />
+                <Lock size={22} style={{ color: 'var(--text-main)' }} />
               </div>
               <h2 className="crowd-card-title" style={{ fontSize: '1.4rem', margin: '0 0 6px 0' }}>
                 Restricted Administrator Login
               </h2>
-              <p className="mono-subtle" style={{ color: '#71717A', fontSize: '0.78rem' }}>
+              <p className="mono-subtle" style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginBottom: 12 }}>
                 AUTHENTICATION RESTRICTED TO PLATFORM ADMINISTRATOR
               </p>
+              {publicUserCount !== null && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 9999, background: 'var(--bg-card-alt)', border: '1px solid var(--border-light)', marginTop: 4 }}>
+                  <span className="identity-dot" style={{ width: 7, height: 7 }} />
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                    {publicUserCount.toLocaleString()} People Using ANON
+                  </span>
+                </div>
+              )}
             </div>
 
             {authError && (
