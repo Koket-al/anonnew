@@ -173,12 +173,13 @@ const markdownComponents = {
   code: ({ node, inline, ...props }) => (
     <code
       style={{
-        background: 'rgba(20, 20, 19, 0.06)',
-        color: '#18181B',
+        background: 'var(--bg-subtle)',
+        color: 'var(--text-main)',
         padding: '2px 6px',
         borderRadius: 6,
         fontFamily: 'var(--font-mono)',
-        fontSize: '0.85em'
+        fontSize: '0.85em',
+        border: '1px solid var(--border-light)'
       }}
       {...props}
     />
@@ -187,7 +188,7 @@ const markdownComponents = {
     <hr
       style={{
         border: 'none',
-        borderTop: '1px dashed #E4E4E7',
+        borderTop: '1px dashed var(--border-dashed)',
         margin: '14px 0'
       }}
     />
@@ -440,12 +441,12 @@ export default function AIAssistantPage() {
           }}
         >
           {messages.length === 0 ? (
-            <div style={{ margin: 'auto', textAlign: 'center', maxWidth: 440, color: '#71717A' }}>
-              <Sparkles size={28} style={{ opacity: 0.35, marginBottom: 12 }} />
-              <p style={{ fontSize: '1rem', color: '#27272A', fontWeight: 500, marginBottom: 6 }}>
+            <div style={{ margin: 'auto', textAlign: 'center', maxWidth: 440, color: 'var(--text-muted)' }}>
+              <Sparkles size={28} style={{ opacity: 0.35, marginBottom: 12, color: 'var(--primary)' }} />
+              <p style={{ fontSize: '1rem', color: 'var(--text-main)', fontWeight: 600, marginBottom: 6 }}>
                 Your private space to reflect freely.
               </p>
-              <p style={{ fontSize: '0.85rem', lineHeight: 1.6 }}>
+              <p style={{ fontSize: '0.85rem', lineHeight: 1.6, color: 'var(--text-muted)' }}>
                 Ask anything about stress, mental well-being, healthy boundaries, or sleep. No queries are tied to your personal identity.
               </p>
             </div>
@@ -467,26 +468,14 @@ export default function AIAssistantPage() {
                     style={{
                       fontFamily: 'var(--font-mono)',
                       fontSize: '0.68rem',
-                      color: '#71717A',
+                      color: 'var(--text-muted)',
                       marginBottom: 5,
                       letterSpacing: '0.05em'
                     }}
                   >
                     YOU // {identity?.username ? `@${identity.username}` : 'ANONYMOUS'}
                   </div>
-                  <div
-                    style={{
-                      padding: '13px 18px',
-                      borderRadius: '18px 18px 4px 18px',
-                      fontSize: '0.9375rem',
-                      lineHeight: 1.65,
-                      whiteSpace: 'pre-wrap',
-                      background: '#18181B',
-                      color: '#FFFFFF',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                      wordBreak: 'break-word'
-                    }}
-                  >
+                  <div className="ai-user-bubble">
                     {m.content}
                   </div>
                 </div>
@@ -518,7 +507,7 @@ export default function AIAssistantPage() {
                       style={{
                         fontFamily: 'var(--font-mono)',
                         fontSize: '0.68rem',
-                        color: '#52525B',
+                        color: 'var(--text-muted)',
                         letterSpacing: '0.06em',
                         display: 'flex',
                         alignItems: 'center',
@@ -530,8 +519,8 @@ export default function AIAssistantPage() {
                           width: 20,
                           height: 20,
                           borderRadius: '50%',
-                          background: '#141413',
-                          color: '#FFFFFF',
+                          background: 'var(--primary)',
+                          color: 'var(--bg-page)',
                           display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center'
@@ -539,9 +528,9 @@ export default function AIAssistantPage() {
                       >
                         <Sparkles size={11} />
                       </span>
-                      <strong style={{ color: '#141413' }}>ANON AI GUIDE</strong>
-                      <span style={{ color: '#A1A1AA' }}>&bull;</span>
-                      <span style={{ color: '#71717A' }}>CONFIDENTIAL REFLECTION</span>
+                      <strong style={{ color: 'var(--text-main)' }}>ANON AI GUIDE</strong>
+                      <span style={{ color: 'var(--text-muted)' }}>&bull;</span>
+                      <span style={{ color: 'var(--text-muted)' }}>CONFIDENTIAL REFLECTION</span>
                     </div>
 
                     <button
@@ -570,14 +559,14 @@ export default function AIAssistantPage() {
 
                     <div
                       style={{
-                        borderTop: '1px solid rgba(0,0,0,0.06)',
+                        borderTop: '1px solid var(--border-light)',
                         marginTop: 14,
                         paddingTop: 10,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         fontSize: '0.72rem',
-                        color: '#A1A1AA',
+                        color: 'var(--text-muted)',
                         fontFamily: 'var(--font-mono)'
                       }}
                     >
@@ -607,7 +596,7 @@ export default function AIAssistantPage() {
                 style={{
                   fontFamily: 'var(--font-mono)',
                   fontSize: '0.68rem',
-                  color: '#71717A',
+                  color: 'var(--text-muted)',
                   marginBottom: 6,
                   letterSpacing: '0.05em',
                   display: 'flex',
@@ -619,23 +608,24 @@ export default function AIAssistantPage() {
                 <span>AI GUIDE // REFLECTING</span>
               </div>
               <div
+                className="ai-loading-box"
                 style={{
                   padding: '16px 22px',
                   borderRadius: '18px 18px 18px 4px',
-                  background: '#FFFFFF',
-                  border: '1px solid rgba(20, 20, 19, 0.08)',
-                  boxShadow: '0 4px 18px -2px rgba(20, 20, 19, 0.04)',
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border-light)',
+                  boxShadow: '0 4px 18px -2px rgba(0, 0, 0, 0.04)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 14
                 }}
               >
                 <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-                  <span className="ai-dot-pulse" style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#141413' }} />
-                  <span className="ai-dot-pulse" style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#141413', animationDelay: '0.2s' }} />
-                  <span className="ai-dot-pulse" style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#141413', animationDelay: '0.4s' }} />
+                  <span className="ai-dot-pulse" style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: 'var(--text-main)' }} />
+                  <span className="ai-dot-pulse" style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: 'var(--text-main)', animationDelay: '0.2s' }} />
+                  <span className="ai-dot-pulse" style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: 'var(--text-main)', animationDelay: '0.4s' }} />
                 </div>
-                <span style={{ fontSize: '0.88rem', color: '#52525B', fontStyle: 'italic' }}>
+                <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                   Preparing a thoughtful, gentle reflection for you...
                 </span>
               </div>
@@ -665,7 +655,8 @@ export default function AIAssistantPage() {
               style={{
                 borderRadius: 'var(--radius-pill)',
                 padding: '12px 18px',
-                background: '#FFFFFF',
+                background: 'var(--bg-card)',
+                color: 'var(--text-main)',
                 border: '1px solid var(--border-light)'
               }}
             />

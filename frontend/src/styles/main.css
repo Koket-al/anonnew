@@ -3712,13 +3712,73 @@ a.link-underline {
   border-top-color: var(--border-light) !important;
 }
 
+/* ==========================================================================
+   AI Assistant Dark Mode: Pure White High Contrast Text
+   ========================================================================== */
 [data-theme="dark"] .ai-response-card {
-  background: var(--bg-card);
-  border-color: var(--border-light);
+  background: #181716 !important;
+  border-color: #383734 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45) !important;
 }
 
-[data-theme="dark"] .ai-response-content {
-  color: var(--text-main);
+[data-theme="dark"] .ai-response-content,
+[data-theme="dark"] .ai-response-content p,
+[data-theme="dark"] .ai-response-content li,
+[data-theme="dark"] .ai-response-content span,
+[data-theme="dark"] .ai-response-content strong,
+[data-theme="dark"] .ai-response-content em,
+[data-theme="dark"] .ai-response-content h1,
+[data-theme="dark"] .ai-response-content h2,
+[data-theme="dark"] .ai-response-content h3,
+[data-theme="dark"] .ai-response-content h4,
+[data-theme="dark"] .ai-response-content h5,
+[data-theme="dark"] .ai-response-content h6 {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .ai-response-content code {
+  background: #252422 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #4A4843 !important;
+}
+
+[data-theme="dark"] .ai-response-content blockquote {
+  background: #21201D !important;
+  border-left-color: #FFFFFF !important;
+  color: #F4F4F5 !important;
+}
+
+[data-theme="dark"] .ai-copy-btn {
+  background: #252422 !important;
+  border-color: #4A4843 !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .ai-copy-btn:hover {
+  background: #33322E !important;
+  border-color: #FFFFFF !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .ai-loading-box {
+  background: #181716 !important;
+  border-color: #383734 !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .ai-loading-box span {
+  color: #F4F4F5 !important;
+}
+
+[data-theme="dark"] .ai-dot-pulse {
+  background-color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .ai-user-bubble {
+  background: #252422 !important;
+  border: 1px solid #4A4843 !important;
+  color: #FFFFFF !important;
 }
 
 /* ==========================================================================
