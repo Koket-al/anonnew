@@ -1134,6 +1134,24 @@ describe('ANON Backend API Tests', () => {
     // 4. Block access without admin token
     const blockedRes = await fetch(`${baseURL}/api/admin/professionals/pending`);
     assert.equal(blockedRes.status, 401);
+
+    const blockedStats = await fetch(`${baseURL}/api/admin/stats`);
+    assert.equal(blockedStats.status, 401);
+
+    // 5. /api/admin/stats returns real-time user usage and engagement analytics
+    const statsRes = await fetch(`${baseURL}/api/admin/stats`, {
+      headers: { 'Authorization': `Bearer ${loginData.token}` }
+    });
+    assert.equal(statsRes.status, 200);
+    const statsData = await statsRes.json();
+    assert.equal(statsData.success, true);
+    assert.ok(statsData.stats);
+    assert.ok(typeof statsData.stats.users.totalUsers === 'number');
+    assert.ok(typeof statsData.stats.users.activeUsers24h === 'number');
+    assert.ok(typeof statsData.stats.users.totalPersonas === 'number');
+    assert.ok(typeof statsData.stats.activity.totalPosts === 'number');
+    assert.ok(typeof statsData.stats.activity.totalMessages === 'number');
+    assert.ok(Array.isArray(statsData.stats.history));
   });
 
   test('33. Admin Clinician Application Review - Displays photo and approves doctor into directory', async () => {

@@ -5,6 +5,13 @@ import xss from 'xss';
 import { ProfessionalAccount } from '../models/ProfessionalAccount.js';
 import { ConsultationRequest } from '../models/ConsultationRequest.js';
 import { AnonymousIdentity } from '../models/AnonymousIdentity.js';
+import { AnonymousSession } from '../models/AnonymousSession.js';
+import { Post } from '../models/Post.js';
+import { Reply } from '../models/Reply.js';
+import { Message } from '../models/Message.js';
+import { Conversation } from '../models/Conversation.js';
+import { ListeningRoom } from '../models/ListeningRoom.js';
+import { Community } from '../models/Community.js';
 import { RevokedToken } from '../models/RevokedToken.js';
 
 /**
@@ -406,6 +413,128 @@ export async function setModeratorRole(req, res, next) {
         id: identity._id,
         username: identity.username,
         isModerator: identity.isModerator
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * GET /api/admin/stats
+ * Real-time usage and platform engagement metrics for administrator oversight:
+ * - How many people use ANON (total anonymous user sessions & active users)
+ * - Cryptographic personas generated
+ * - Discussion posts, shared replies, and 1-on-1 private messages
+ * - Live listening rooms & communities
+ * - Clinical consultation requests & verified doctors
+ * - 7-day daily activity trends
+ */
+export async function getAdminPlatformStats(req, res, next) {
+  try {
+    const now = new Date();
+    const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const since7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const since30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+
+    const [
+      totalUsers,
+      activeUsers24h,
+      activeUsers7d,
+      activeUsers30d,
+      newUsersToday,
+      totalPersonas,
+      activePersonas24h,
+      totalPosts,
+      postsToday,
+      totalReplies,
+      totalMessages,
+      messagesToday,
+      totalConversations,
+      totalListeningRooms,
+      activeListeningRooms,
+      totalConsultations,
+      activeConsultations,
+      totalCommunities,
+      verifiedProfessionals,
+      pendingProfessionals
+    ] = await Promise.all([
+      AnonymousSession.countDocuments(),
+      AnonymousSession.countDocuments({ lastUsedAt: { $gte: since24h } }),
+      AnonymousSession.countDocuments({ lastUsedAt: { $gte: since7d } }),
+      AnonymousSession.countDocuments({ lastUsedAt: { $gte: since30d } }),
+      AnonymousSession.countDocuments({ createdAt: { $gte: startOfToday } }),
+      AnonymousIdentity.countDocuments(),
+      AnonymousIdentity.countDocuments({ lastActiveAt: { $gte: since24h } }),
+      Post.countDocuments(),
+      Post.countDocuments({ createdAt: { $gte: startOfToday } }),
+      Reply.countDocuments(),
+      Message.countDocuments(),
+      Message.countDocuments({ createdAt: { $gte: startOfToday } }),
+      Conversation.countDocuments(),
+      ListeningRoom.countDocuments(),
+      ListeningRoom.countDocuments({ status: 'active' }),
+      ConsultationRequest.countDocuments(),
+      ConsultationRequest.countDocuments({ status: { $in: ['accepted', 'active'] } }),
+      Community.countDocuments(),
+      ProfessionalAccount.countDocuments({ verificationStatus: 'verified' }),
+      ProfessionalAccount.countDocuments({ verificationStatus: 'pending' })
+    ]);
+
+    // 7-day daily trends for visual activity charts
+    const dayBuckets = [];
+    for (let i = 6; i >= 0; i--) {
+      const dStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, 0, 0, 0);
+      const dEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, 23, 59, 59, 999);
+      const label = dStart.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      const shortDay = dStart.toLocaleDateString('en-US', { weekday: 'short' });
+      dayBuckets.push({ start: dStart, end: dEnd, label, shortDay });
+    }
+
+    const history = await Promise.all(
+      dayBuckets.map(async ({ start, end, label, shortDay }) => {
+        const [usersCount, postsCount, messagesCount] = await Promise.all([
+          AnonymousSession.countDocuments({ createdAt: { $gte: start, $lte: end } }),
+          Post.countDocuments({ createdAt: { $gte: start, $lte: end } }),
+          Message.countDocuments({ createdAt: { $gte: start, $lte: end } })
+        ]);
+        return { label, shortDay, newUsers: usersCount, posts: postsCount, messages: messagesCount };
+      })
+    );
+
+    res.json({
+      success: true,
+      stats: {
+        users: {
+          totalUsers,
+          activeUsers24h,
+          activeUsers7d,
+          activeUsers30d,
+          newUsersToday,
+          totalPersonas,
+          activePersonas24h
+        },
+        activity: {
+          totalPosts,
+          postsToday,
+          totalReplies,
+          totalMessages,
+          messagesToday,
+          totalConversations
+        },
+        sanctuaries: {
+          totalListeningRooms,
+          activeListeningRooms,
+          totalCommunities
+        },
+        clinical: {
+          totalConsultations,
+          activeConsultations,
+          verifiedProfessionals,
+          pendingProfessionals
+        },
+        history
       }
     });
   } catch (error) {

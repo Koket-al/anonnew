@@ -578,6 +578,10 @@ export async function getAdminMe() {
   return await request('/admin/me');
 }
 
+export async function getAdminPlatformStats() {
+  return await request('/admin/stats');
+}
+
 export async function getAdminPendingProfessionals() {
   return await request('/admin/professionals/pending');
 }

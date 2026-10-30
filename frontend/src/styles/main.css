@@ -4608,6 +4608,72 @@ a.link-underline {
   color: #E4E4E7 !important;
 }
 
+/* ==========================================================================
+   Admin Dashboard: Platform Analytics & Usage Cards
+   ========================================================================== */
+.admin-stat-summary-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-stat-summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+.admin-metric-card {
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 16px 18px;
+  transition: all 0.2s ease;
+}
+
+.admin-metric-card:hover {
+  border-color: var(--border-dark);
+}
+
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Dark Mode for Admin Dashboard Analytics */
+[data-theme="dark"] .admin-stat-summary-card {
+  background: #181716 !important;
+  border-color: #383734 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45) !important;
+}
+
+[data-theme="dark"] .admin-stat-summary-card:hover {
+  border-color: #4A4843 !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65) !important;
+}
+
+[data-theme="dark"] .admin-metric-card {
+  background: #141413 !important;
+  border-color: #2D2C28 !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .admin-metric-card:hover {
+  border-color: #4A4843 !important;
+}
+
+
 
 
 

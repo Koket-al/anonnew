@@ -5,6 +5,7 @@ import {
   adminLogin,
   adminLogout,
   getAdminMe,
+  getAdminPlatformStats,
   getAdminPendingProfessionals,
   getAdminAllProfessionals,
   reviewProfessionalApplication,
@@ -25,7 +26,17 @@ import {
   Clock,
   Image as ImageIcon,
   ArrowRight,
-  RefreshCw
+  RefreshCw,
+  BarChart3,
+  Activity,
+  TrendingUp,
+  MessageCircle,
+  Layers,
+  Headphones,
+  Calendar,
+  Stethoscope,
+  Globe,
+  Sparkles
 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
@@ -41,7 +52,9 @@ export default function AdminDashboardPage() {
   const [submittingLogin, setSubmittingLogin] = useState(false);
 
   // Dashboard state
-  const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'verified' | 'add'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'pending' | 'verified' | 'add'
+  const [stats, setStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(false);
   const [pendingList, setPendingList] = useState([]);
   const [verifiedList, setVerifiedList] = useState([]);
   const [reviewNotes, setReviewNotes] = useState({});
@@ -86,9 +99,11 @@ export default function AdminDashboardPage() {
 
   async function loadDashboardData() {
     try {
-      const [pendingRes, verifiedRes] = await Promise.all([
+      setStatsLoading(true);
+      const [pendingRes, verifiedRes, statsRes] = await Promise.all([
         getAdminPendingProfessionals(),
-        getAdminAllProfessionals('verified')
+        getAdminAllProfessionals('verified'),
+        getAdminPlatformStats()
       ]);
 
       if (pendingRes && pendingRes.applications) {
@@ -97,8 +112,13 @@ export default function AdminDashboardPage() {
       if (verifiedRes && verifiedRes.professionals) {
         setVerifiedList(verifiedRes.professionals);
       }
+      if (statsRes && statsRes.stats) {
+        setStats(statsRes.stats);
+      }
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
+    } finally {
+      setStatsLoading(false);
     }
   }
 
@@ -402,8 +422,82 @@ export default function AdminDashboardPage() {
       ) : (
         /* Authenticated Admin Dashboard */
         <div style={{ maxWidth: 1080, margin: '0 auto 60px auto' }}>
+          {/* Live Top At-A-Glance Stat Banner */}
+          {stats && (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: 14,
+                marginBottom: 24
+              }}
+            >
+              <div className="admin-stat-summary-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span className="mono-subtle" style={{ fontSize: '0.68rem', letterSpacing: '0.08em' }}>PEOPLE USING ANON</span>
+                  <Users size={15} style={{ opacity: 0.7 }} />
+                </div>
+                <div style={{ fontSize: '1.85rem', fontWeight: 700, fontFamily: 'var(--font-sans)', lineHeight: 1.1 }}>
+                  {stats.users.totalUsers.toLocaleString()}
+                </div>
+                <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                  Total anonymous user sessions
+                </div>
+              </div>
+
+              <div className="admin-stat-summary-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span className="mono-subtle" style={{ fontSize: '0.68rem', letterSpacing: '0.08em' }}>ACTIVE TODAY (24H)</span>
+                  <span className="identity-dot" style={{ width: 8, height: 8 }} />
+                </div>
+                <div style={{ fontSize: '1.85rem', fontWeight: 700, fontFamily: 'var(--font-sans)', lineHeight: 1.1, color: '#10B981' }}>
+                  {stats.users.activeUsers24h.toLocaleString()}
+                </div>
+                <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                  Active on platform in last 24h
+                </div>
+              </div>
+
+              <div className="admin-stat-summary-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span className="mono-subtle" style={{ fontSize: '0.68rem', letterSpacing: '0.08em' }}>CRYPTOGRAPHIC PERSONAS</span>
+                  <Layers size={15} style={{ opacity: 0.7 }} />
+                </div>
+                <div style={{ fontSize: '1.85rem', fontWeight: 700, fontFamily: 'var(--font-sans)', lineHeight: 1.1 }}>
+                  {stats.users.totalPersonas.toLocaleString()}
+                </div>
+                <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                  Generated identities (up to 5 per user)
+                </div>
+              </div>
+
+              <div className="admin-stat-summary-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span className="mono-subtle" style={{ fontSize: '0.68rem', letterSpacing: '0.08em' }}>SOLIDARITY & MESSAGES</span>
+                  <MessageCircle size={15} style={{ opacity: 0.7 }} />
+                </div>
+                <div style={{ fontSize: '1.85rem', fontWeight: 700, fontFamily: 'var(--font-sans)', lineHeight: 1.1 }}>
+                  {(stats.activity.totalPosts + stats.activity.totalReplies + stats.activity.totalMessages).toLocaleString()}
+                </div>
+                <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                  Questions, replies & private messages
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Navigation Tabs */}
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 28 }}>
+            <button
+              type="button"
+              className={`crowd-cat-pill ${activeTab === 'overview' ? 'active' : ''}`}
+              onClick={() => setActiveTab('overview')}
+              style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+            >
+              <BarChart3 size={14} />
+              <span>Platform Usage & People ({stats ? stats.users.totalUsers.toLocaleString() : '...'})</span>
+            </button>
+
             <button
               type="button"
               className={`crowd-cat-pill ${activeTab === 'pending' ? 'active' : ''}`}
@@ -438,12 +532,328 @@ export default function AdminDashboardPage() {
               type="button"
               className="crowd-cat-pill"
               onClick={loadDashboardData}
-              title="Refresh records"
+              title="Refresh records and live usage stats"
               style={{ padding: '8px 12px' }}
+              disabled={statsLoading}
             >
-              <RefreshCw size={13} />
+              <RefreshCw size={13} className={statsLoading ? 'spin-icon' : ''} />
             </button>
           </div>
+
+          {/* TAB 0: PLATFORM USAGE & PEOPLE OVERVIEW */}
+          {activeTab === 'overview' && (
+            <div>
+              <div style={{ marginBottom: 22, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                  <span className="mono-subtle" style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 4, fontSize: '0.72rem' }}>
+                    PLATFORM METRICS & USER BASE //
+                  </span>
+                  <h2 className="crowd-card-title" style={{ fontSize: '1.45rem', margin: 0 }}>
+                    How Many People Use ANON
+                  </h2>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0', maxWidth: 700 }}>
+                    Real-time oversight of anonymous population growth, daily active visitors, community interactions, and clinical service demand.
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span className="crowd-tag-pill highlight" style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span className="identity-dot" style={{ width: 6, height: 6 }} />
+                    <span>Real-Time Live</span>
+                  </span>
+                </div>
+              </div>
+
+              {!stats ? (
+                <div className="editorial-faq-frame crowd-empty-frame" style={{ padding: '40px 20px', textAlign: 'center' }}>
+                  <RefreshCw size={24} className="spin-icon" style={{ margin: '0 auto 12px auto', display: 'block' }} />
+                  <p className="mono-subtle">Aggregating platform usage metrics...</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                  {/* Category 1: People & Population Breakdown */}
+                  <div className="crowd-card" style={{ padding: '28px 30px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+                      <Users size={18} />
+                      <h3 className="crowd-card-title" style={{ fontSize: '1.15rem', margin: 0 }}>
+                        User Population & Active Traffic
+                      </h3>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14 }}>
+                      <div className="admin-metric-card">
+                        <span className="mono-subtle" style={{ fontSize: '0.68rem', display: 'block', marginBottom: 6 }}>
+                          TOTAL UNIQUE USERS
+                        </span>
+                        <div style={{ fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.1 }}>
+                          {stats.users.totalUsers.toLocaleString()}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                          Unique anonymous sessions created
+                        </div>
+                      </div>
+
+                      <div className="admin-metric-card">
+                        <span className="mono-subtle" style={{ fontSize: '0.68rem', display: 'block', marginBottom: 6 }}>
+                          ACTIVE TODAY (24 HOURS)
+                        </span>
+                        <div style={{ fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.1, color: '#10B981' }}>
+                          {stats.users.activeUsers24h.toLocaleString()}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                          Visited or interacted today
+                        </div>
+                      </div>
+
+                      <div className="admin-metric-card">
+                        <span className="mono-subtle" style={{ fontSize: '0.68rem', display: 'block', marginBottom: 6 }}>
+                          WEEKLY ACTIVE USERS (7D)
+                        </span>
+                        <div style={{ fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.1 }}>
+                          {stats.users.activeUsers7d.toLocaleString()}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                          Active in the past 7 days
+                        </div>
+                      </div>
+
+                      <div className="admin-metric-card">
+                        <span className="mono-subtle" style={{ fontSize: '0.68rem', display: 'block', marginBottom: 6 }}>
+                          MONTHLY ACTIVE USERS (30D)
+                        </span>
+                        <div style={{ fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.1 }}>
+                          {stats.users.activeUsers30d.toLocaleString()}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                          Active in the past 30 days
+                        </div>
+                      </div>
+
+                      <div className="admin-metric-card">
+                        <span className="mono-subtle" style={{ fontSize: '0.68rem', display: 'block', marginBottom: 6 }}>
+                          NEW USERS TODAY
+                        </span>
+                        <div style={{ fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.1, color: '#3B82F6' }}>
+                          +{stats.users.newUsersToday.toLocaleString()}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                          Joined since midnight
+                        </div>
+                      </div>
+
+                      <div className="admin-metric-card">
+                        <span className="mono-subtle" style={{ fontSize: '0.68rem', display: 'block', marginBottom: 6 }}>
+                          TOTAL PERSONAS
+                        </span>
+                        <div style={{ fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.1 }}>
+                          {stats.users.totalPersonas.toLocaleString()}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                          Cryptographic personas held
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Category 2: Peer Engagement & Communications */}
+                  <div className="crowd-card" style={{ padding: '28px 30px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+                      <MessageCircle size={18} />
+                      <h3 className="crowd-card-title" style={{ fontSize: '1.15rem', margin: 0 }}>
+                        Discussion & Message Activity
+                      </h3>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14 }}>
+                      <div className="admin-metric-card">
+                        <span className="mono-subtle" style={{ fontSize: '0.68rem', display: 'block', marginBottom: 6 }}>
+                          QUESTIONS & POSTS
+                        </span>
+                        <div style={{ fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.1 }}>
+                          {stats.activity.totalPosts.toLocaleString()}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                          +{stats.activity.postsToday} shared today
+                        </div>
+                      </div>
+
+                      <div className="admin-metric-card">
+                        <span className="mono-subtle" style={{ fontSize: '0.68rem', display: 'block', marginBottom: 6 }}>
+                          PEER REPLIES & EXPERIENCES
+                        </span>
+                        <div style={{ fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.1 }}>
+                          {stats.activity.totalReplies.toLocaleString()}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                          Empathy & advice answers
+                        </div>
+                      </div>
+
+                      <div className="admin-metric-card">
+                        <span className="mono-subtle" style={{ fontSize: '0.68rem', display: 'block', marginBottom: 6 }}>
+                          PRIVATE 1-ON-1 MESSAGES
+                        </span>
+                        <div style={{ fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.1 }}>
+                          {stats.activity.totalMessages.toLocaleString()}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                          +{stats.activity.messagesToday} messages today
+                        </div>
+                      </div>
+
+                      <div className="admin-metric-card">
+                        <span className="mono-subtle" style={{ fontSize: '0.68rem', display: 'block', marginBottom: 6 }}>
+                          PRIVATE CONVERSATIONS
+                        </span>
+                        <div style={{ fontSize: '1.75rem', fontWeight: 700, lineHeight: 1.1 }}>
+                          {stats.activity.totalConversations.toLocaleString()}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                          Confidential peer channels
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Category 3: Sanctuaries, Listening Rooms & Clinical Overview */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
+                    <div className="crowd-card" style={{ padding: '24px 26px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                        <Headphones size={18} />
+                        <h3 className="crowd-card-title" style={{ fontSize: '1.15rem', margin: 0 }}>
+                          Sanctuaries & Rooms
+                        </h3>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 10, background: 'var(--bg-card-alt)' }}>
+                          <span style={{ fontSize: '0.85rem' }}>Active Listening Rooms (Live)</span>
+                          <span className="crowd-tag-pill highlight" style={{ fontWeight: 700 }}>
+                            {stats.sanctuaries.activeListeningRooms} Live
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 10, background: 'var(--bg-card-alt)' }}>
+                          <span style={{ fontSize: '0.85rem' }}>Total Listening Rooms Created</span>
+                          <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{stats.sanctuaries.totalListeningRooms}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 10, background: 'var(--bg-card-alt)' }}>
+                          <span style={{ fontSize: '0.85rem' }}>Peer Communities Formed</span>
+                          <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{stats.sanctuaries.totalCommunities}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="crowd-card" style={{ padding: '24px 26px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                        <Stethoscope size={18} />
+                        <h3 className="crowd-card-title" style={{ fontSize: '1.15rem', margin: 0 }}>
+                          Clinical Care & Doctors
+                        </h3>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 10, background: 'var(--bg-card-alt)' }}>
+                          <span style={{ fontSize: '0.85rem' }}>Consultations Requested</span>
+                          <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{stats.clinical.totalConsultations}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 10, background: 'var(--bg-card-alt)' }}>
+                          <span style={{ fontSize: '0.85rem' }}>Active Consultation Cases</span>
+                          <span className="crowd-tag-pill highlight" style={{ fontWeight: 700 }}>
+                            {stats.clinical.activeConsultations} Ongoing
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 10, background: 'var(--bg-card-alt)' }}>
+                          <span style={{ fontSize: '0.85rem' }}>Verified Clinicians</span>
+                          <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#10B981' }}>{stats.clinical.verifiedProfessionals}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 10, background: 'var(--bg-card-alt)' }}>
+                          <span style={{ fontSize: '0.85rem' }}>Applications Pending Review</span>
+                          <span style={{ fontWeight: 700, fontSize: '0.95rem', color: stats.clinical.pendingProfessionals > 0 ? '#F59E0B' : 'var(--text-muted)' }}>
+                            {stats.clinical.pendingProfessionals}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Category 4: 7-Day Activity Trends Table */}
+                  {stats.history && stats.history.length > 0 && (
+                    <div className="crowd-card" style={{ padding: '28px 30px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <TrendingUp size={18} />
+                          <h3 className="crowd-card-title" style={{ fontSize: '1.15rem', margin: 0 }}>
+                            7-Day User Growth & Activity Trends
+                          </h3>
+                        </div>
+                        <span className="mono-subtle" style={{ fontSize: '0.72rem' }}>
+                          PAST 7 CALENDAR DAYS
+                        </span>
+                      </div>
+
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                          <thead>
+                            <tr style={{ borderBottom: '1px solid var(--border-light)' }}>
+                              <th style={{ padding: '10px 14px', fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>DAY / DATE</th>
+                              <th style={{ padding: '10px 14px', fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>NEW USERS</th>
+                              <th style={{ padding: '10px 14px', fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>QUESTIONS POSTED</th>
+                              <th style={{ padding: '10px 14px', fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>PRIVATE MESSAGES</th>
+                              <th style={{ padding: '10px 14px', fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>MOMENTUM</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {stats.history.map((day, idx) => {
+                              const totalDayActivity = day.newUsers + day.posts + day.messages;
+                              const maxActivity = Math.max(...stats.history.map(d => d.newUsers + d.posts + d.messages), 1);
+                              const barPercent = Math.min(100, Math.max(12, Math.round((totalDayActivity / maxActivity) * 100)));
+
+                              return (
+                                <tr key={idx} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                                  <td style={{ padding: '12px 14px', fontWeight: 600 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                      <Calendar size={13} style={{ opacity: 0.6 }} />
+                                      <span>{day.label}</span>
+                                    </div>
+                                  </td>
+                                  <td style={{ padding: '12px 14px' }}>
+                                    <span style={{ fontWeight: 600, color: '#3B82F6' }}>+{day.newUsers}</span>
+                                  </td>
+                                  <td style={{ padding: '12px 14px' }}>
+                                    <span style={{ fontWeight: 600 }}>{day.posts}</span>
+                                  </td>
+                                  <td style={{ padding: '12px 14px' }}>
+                                    <span style={{ fontWeight: 600 }}>{day.messages}</span>
+                                  </td>
+                                  <td style={{ padding: '12px 14px', width: '30%' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                      <div style={{ flex: 1, height: 8, background: 'var(--bg-card-alt)', borderRadius: 9999, overflow: 'hidden' }}>
+                                        <div
+                                          style={{
+                                            width: `${barPercent}%`,
+                                            height: '100%',
+                                            background: 'linear-gradient(90deg, #10B981, #3B82F6)',
+                                            borderRadius: 9999
+                                          }}
+                                        />
+                                      </div>
+                                      <span className="mono-subtle" style={{ fontSize: '0.72rem', width: 35, textAlign: 'right' }}>
+                                        {totalDayActivity}
+                                      </span>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* TAB 1: PENDING CLINICIAN APPLICATIONS */}
           {activeTab === 'pending' && (

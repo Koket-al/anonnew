@@ -3,6 +3,7 @@ import {
   adminLogin,
   adminLogout,
   getAdminMe,
+  getAdminPlatformStats,
   getAdminPendingProfessionals,
   getAdminAllProfessionals,
   reviewProfessionalApplication,
@@ -23,6 +24,7 @@ router.post('/logout', adminLogout);
 router.use(requireAdminAuth);
 
 router.get('/me', getAdminMe);
+router.get('/stats', getAdminPlatformStats);
 router.get('/professionals/pending', getAdminPendingProfessionals);
 router.get('/professionals', getAdminAllProfessionals);
 router.post('/professionals/:id/review', reviewProfessionalApplication);
