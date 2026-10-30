@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useRealtime } from '../context/RealtimeContext.jsx';
 import {
   getVerifiedProfessionals,
   submitConsultationRequest,
-  getMyConsultations
+  getMyConsultations,
+  sendConsultationMessage
 } from '../services/api.js';
 import {
   ShieldCheck,
@@ -22,6 +24,7 @@ import {
 
 export default function ProfessionalsPage() {
   const { isAuthenticated, openCreateModal } = useAuth();
+  const { socket, showToast } = useRealtime();
   const [professionals, setProfessionals] = useState([]);
   const [myConsultations, setMyConsultations] = useState([]);
   const [activeTab, setActiveTab] = useState('directory'); // 'directory' or 'my_consultations'
@@ -37,12 +40,54 @@ export default function ProfessionalsPage() {
   const [successMsg, setSuccessMsg] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
 
+  // Follow-up messaging state
+  const [replyTextMap, setReplyTextMap] = useState({});
+  const [sendingReply, setSendingReply] = useState(false);
+
   useEffect(() => {
     loadProfessionals();
     if (isAuthenticated) {
       loadMyConsultations();
     }
   }, [specialty, isAuthenticated]);
+
+  // Real-time synchronization for youth consultation answers & follow-up messages
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleConsultationResponded = () => {
+      showToast('Clinician has responded to your consultation inquiry!', 'info');
+      loadMyConsultations();
+    };
+
+    const handleConsultationMessage = (data) => {
+      setMyConsultations((prev) =>
+        prev.map((c) => {
+          const matchId = c.id || c._id;
+          if (matchId === data.id || matchId === data._id) {
+            return {
+              ...c,
+              status: data.status || c.status,
+              response: data.response || c.response,
+              respondedAt: data.respondedAt || c.respondedAt,
+              messages: data.messages || (data.newMessage ? [...(c.messages || []), data.newMessage] : c.messages)
+            };
+          }
+          return c;
+        })
+      );
+    };
+
+    socket.on('consultation_responded', handleConsultationResponded);
+    socket.on('consultation_message', handleConsultationMessage);
+    socket.on('my_consultation_created', loadMyConsultations);
+
+    return () => {
+      socket.off('consultation_responded', handleConsultationResponded);
+      socket.off('consultation_message', handleConsultationMessage);
+      socket.off('my_consultation_created', loadMyConsultations);
+    };
+  }, [socket, showToast]);
 
   async function loadProfessionals() {
     try {
@@ -111,6 +156,45 @@ export default function ProfessionalsPage() {
       setErrorMsg(err.message || 'Failed to submit consultation request.');
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleSendFollowup(consultationId) {
+    const text = replyTextMap[consultationId];
+    if (!text || !text.trim()) return;
+
+    try {
+      setSendingReply(true);
+      const res = await sendConsultationMessage(consultationId, text.trim());
+      if (res.success) {
+        setMyConsultations((prev) =>
+          prev.map((c) => {
+            const matchId = c.id || c._id;
+            if (matchId === consultationId) {
+              const updated = res.consultation || {};
+              return {
+                ...c,
+                messages: updated.messages || [
+                  ...(c.messages || []),
+                  {
+                    senderRole: 'user',
+                    senderName: 'You',
+                    text: text.trim(),
+                    createdAt: new Date()
+                  }
+                ]
+              };
+            }
+            return c;
+          })
+        );
+        setReplyTextMap({ ...replyTextMap, [consultationId]: '' });
+        showToast('Message sent to clinician.', 'success');
+      }
+    } catch (err) {
+      showToast(err.message || 'Failed to send message.', 'error');
+    } finally {
+      setSendingReply(false);
     }
   }
 
@@ -235,45 +319,53 @@ export default function ProfessionalsPage() {
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
-                      {pro.imageUrl ? (
-                        <img
-                          src={pro.imageUrl}
-                          alt={pro.displayName}
-                          style={{
-                            width: 58,
-                            height: 58,
-                            borderRadius: '50%',
-                            objectFit: 'cover',
-                            border: '2px solid #E4E4E7',
-                            backgroundColor: '#FAFAF9',
-                            flexShrink: 0
-                          }}
-                        />
-                      ) : (
+                      <div style={{ position: 'relative' }}>
+                        {pro.imageUrl ? (
+                          <img
+                            src={pro.imageUrl}
+                            alt={pro.displayName}
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              const fallback = e.currentTarget.nextElementSibling;
+                              if (fallback) fallback.style.display = 'flex';
+                            }}
+                            style={{
+                              width: 58,
+                              height: 58,
+                              borderRadius: '50%',
+                              objectFit: 'cover',
+                              border: '2px solid var(--border-dark)',
+                              backgroundColor: 'var(--bg-card-alt)',
+                              display: 'block',
+                              flexShrink: 0
+                            }}
+                          />
+                        ) : null}
                         <div
                           style={{
                             width: 58,
                             height: 58,
                             borderRadius: '50%',
-                            backgroundColor: 'rgba(20, 20, 19, 0.05)',
-                            border: '1px solid rgba(20, 20, 19, 0.1)',
-                            display: 'flex',
+                            backgroundColor: 'var(--bg-subtle)',
+                            border: '1px solid var(--border-light)',
+                            display: pro.imageUrl ? 'none' : 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontSize: '1.25rem',
-                            fontWeight: 600,
-                            color: '#141413',
+                            fontWeight: 700,
+                            color: 'var(--text-main)',
                             flexShrink: 0
                           }}
                         >
                           {pro.displayName ? pro.displayName.charAt(0).toUpperCase() : 'Dr'}
                         </div>
-                      )}
+                      </div>
+
                       <div>
                         <h3 className="crowd-card-title" style={{ fontSize: '1.25rem', marginBottom: 2 }}>
                           {pro.displayName}
                         </h3>
-                        <div className="mono-subtle" style={{ color: '#71717A', fontSize: '0.78rem' }}>
+                        <div className="mono-subtle" style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
                           {pro.licenseType}
                         </div>
                       </div>
@@ -293,13 +385,13 @@ export default function ProfessionalsPage() {
                     </div>
 
                     {pro.languages && pro.languages.length > 0 && (
-                      <div className="mono-subtle" style={{ marginBottom: 16, color: '#71717A' }}>
-                        LANGUAGES // <strong style={{ color: '#141413' }}>{pro.languages.join(', ')}</strong>
+                      <div className="mono-subtle" style={{ marginBottom: 16, color: 'var(--text-muted)' }}>
+                        LANGUAGES // <strong style={{ color: 'var(--text-main)' }}>{pro.languages.join(', ')}</strong>
                       </div>
                     )}
                   </div>
 
-                  <div style={{ borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: 16 }}>
+                  <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 16 }}>
                     <button
                       type="button"
                       className="btn-black-pill"
@@ -324,7 +416,7 @@ export default function ProfessionalsPage() {
                 <span className="manifesto-pill">Consultation Archive</span>
                 <h3 className="crowd-empty-title">No consultation inquiries yet.</h3>
                 <p className="crowd-empty-desc">
-                  You haven't submitted any questions to verified professionals. When you do, their replies will appear here.
+                  You haven't submitted any questions to verified professionals. When you do, their replies will appear here in real time.
                 </p>
                 <button type="button" className="btn-black-pill" onClick={() => setActiveTab('directory')}>
                   Browse Clinicians
@@ -333,51 +425,213 @@ export default function ProfessionalsPage() {
             </div>
           ) : (
             <div className="crowd-posts-grid">
-              {myConsultations.map((c) => (
-                <article key={c.id} className="crowd-card">
-                  <div className="crowd-card-header">
-                    <div>
-                      <span className={`crowd-tag-pill ${c.status === 'responded' ? 'highlight' : ''}`} style={{ marginBottom: 6 }}>
-                        STATUS: {c.status === 'responded' ? 'Responded by Clinician' : 'In Review'}
-                      </span>
-                      <h3 className="crowd-card-title" style={{ fontSize: '1.25rem' }}>{c.topic}</h3>
-                      <div className="mono-subtle" style={{ color: '#71717A' }}>
-                        INQUIRY TO // <strong>{c.professional?.displayName || 'Verified Clinician'}</strong>
-                      </div>
-                    </div>
-                    <span className="crowd-card-time">
-                      {new Date(c.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
+              {myConsultations.map((c) => {
+                const consultationId = c.id || c._id;
+                const threadMessages = Array.isArray(c.messages) && c.messages.length > 0 ? c.messages : [];
+                const doctorPhoto = c.professional?.imageUrl;
+                const doctorName = c.professional?.displayName || 'Verified Clinician';
 
-                  <div style={{ background: '#F4F4F5', padding: 16, borderRadius: 12, marginBottom: 16, fontSize: '0.925rem', lineHeight: 1.6 }}>
-                    <span className="mono-subtle" style={{ display: 'block', marginBottom: 4 }}>YOUR INQUIRY //</span>
-                    {c.message}
-                  </div>
-
-                  {c.response ? (
-                    <div style={{ padding: 18, background: '#FFFFFF', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 12 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, color: '#065F46', marginBottom: 8, fontSize: '0.85rem' }}>
-                        <CheckCircle size={15} />
-                        <span>Clinician Response</span>
-                      </div>
-                      <div style={{ fontSize: '0.95rem', lineHeight: 1.65, whiteSpace: 'pre-line', color: '#141413' }}>
-                        {c.response}
-                      </div>
-                      {c.respondedAt && (
-                        <div className="mono-subtle" style={{ marginTop: 10, color: '#71717A' }}>
-                          RESPONDED ON {new Date(c.respondedAt).toLocaleDateString()}
+                return (
+                  <article key={consultationId} className="crowd-card">
+                    <div className="crowd-card-header">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ position: 'relative' }}>
+                          {doctorPhoto ? (
+                            <img
+                              src={doctorPhoto}
+                              alt={doctorName}
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                const fallback = e.currentTarget.nextElementSibling;
+                                if (fallback) fallback.style.display = 'flex';
+                              }}
+                              style={{
+                                width: 44,
+                                height: 44,
+                                borderRadius: '50%',
+                                objectFit: 'cover',
+                                border: '1px solid var(--border-dark)',
+                                backgroundColor: 'var(--bg-card-alt)',
+                                display: 'block'
+                              }}
+                            />
+                          ) : null}
+                          <div
+                            style={{
+                              width: 44,
+                              height: 44,
+                              borderRadius: '50%',
+                              backgroundColor: 'var(--bg-subtle)',
+                              border: '1px solid var(--border-light)',
+                              display: doctorPhoto ? 'none' : 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 700,
+                              fontSize: '1rem',
+                              color: 'var(--text-main)'
+                            }}
+                          >
+                            {doctorName.charAt(0)}
+                          </div>
                         </div>
-                      )}
+
+                        <div>
+                          <span className={`crowd-tag-pill ${c.status === 'responded' ? 'highlight' : ''}`} style={{ marginBottom: 4 }}>
+                            STATUS: {c.status === 'responded' ? 'Responded by Clinician' : 'In Review'}
+                          </span>
+                          <h3 className="crowd-card-title" style={{ fontSize: '1.25rem', margin: 0, color: 'var(--text-main)' }}>
+                            {c.topic}
+                          </h3>
+                          <div className="mono-subtle" style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                            INQUIRY TO // <strong>{doctorName}</strong>
+                          </div>
+                        </div>
+                      </div>
+                      <span className="crowd-card-time">
+                        {new Date(c.createdAt).toLocaleDateString()}
+                      </span>
                     </div>
-                  ) : (
-                    <div className="mono-subtle" style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#71717A' }}>
-                      <Clock size={12} />
-                      <span>Awaiting clinician response. You will see their reply right here when ready.</span>
+
+                    {/* Initial User Question */}
+                    <div
+                      style={{
+                        background: 'var(--bg-card-alt)',
+                        border: '1px solid var(--border-light)',
+                        padding: 16,
+                        borderRadius: 14,
+                        marginBottom: 16,
+                        fontSize: '0.925rem',
+                        lineHeight: 1.6,
+                        color: 'var(--text-main)'
+                      }}
+                    >
+                      <span className="mono-subtle" style={{ display: 'block', marginBottom: 4, color: 'var(--text-muted)' }}>
+                        YOUR INITIAL INQUIRY //
+                      </span>
+                      {c.message}
                     </div>
-                  )}
-                </article>
-              ))}
+
+                    {/* Interactive Messages Thread */}
+                    {threadMessages.length > 0 && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 12,
+                          marginBottom: 16,
+                          maxHeight: 340,
+                          overflowY: 'auto',
+                          paddingRight: 4
+                        }}
+                      >
+                        {threadMessages.map((msg, idx) => {
+                          const isDoc = msg.senderRole === 'professional';
+                          return (
+                            <div
+                              key={msg._id || idx}
+                              style={{
+                                alignSelf: isDoc ? 'flex-start' : 'flex-end',
+                                maxWidth: '85%',
+                                background: isDoc ? 'var(--bg-card)' : 'var(--bg-card-alt)',
+                                border: isDoc ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid var(--border-light)',
+                                borderRadius: isDoc ? '14px 14px 14px 2px' : '14px 14px 2px 14px',
+                                padding: '12px 16px',
+                                fontSize: '0.9rem',
+                                lineHeight: 1.6
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                  fontSize: '0.74rem',
+                                  fontWeight: 600,
+                                  color: isDoc ? '#10B981' : 'var(--text-muted)',
+                                  marginBottom: 4
+                                }}
+                              >
+                                <span>{isDoc ? (msg.senderName || doctorName) : 'You (Anonymous)'}</span>
+                                <span style={{ opacity: 0.6 }}>&bull; {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              </div>
+                              <div style={{ color: 'var(--text-main)', whiteSpace: 'pre-line' }}>{msg.text}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Legacy Single Response fallback if thread empty but c.response exists */}
+                    {threadMessages.length === 0 && c.response && (
+                      <div
+                        style={{
+                          padding: 18,
+                          background: 'var(--bg-card)',
+                          border: '1px solid rgba(16, 185, 129, 0.3)',
+                          borderRadius: 14,
+                          marginBottom: 16
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            fontWeight: 600,
+                            color: '#10B981',
+                            marginBottom: 8,
+                            fontSize: '0.85rem'
+                          }}
+                        >
+                          <CheckCircle size={15} />
+                          <span>Clinician Response</span>
+                        </div>
+                        <div style={{ fontSize: '0.95rem', lineHeight: 1.65, whiteSpace: 'pre-line', color: 'var(--text-main)' }}>
+                          {c.response}
+                        </div>
+                        {c.respondedAt && (
+                          <div className="mono-subtle" style={{ marginTop: 10, color: 'var(--text-muted)' }}>
+                            RESPONDED ON {new Date(c.respondedAt).toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Awaiting response notice */}
+                    {threadMessages.length === 0 && !c.response && (
+                      <div className="mono-subtle" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', marginBottom: 16 }}>
+                        <Clock size={12} />
+                        <span>Awaiting clinician response. You will see their reply right here when ready in real time.</span>
+                      </div>
+                    )}
+
+                    {/* Interactive Follow-up Reply Box (available once clinician has responded) */}
+                    {(c.response || threadMessages.length > 0) && (
+                      <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 14 }}>
+                        <textarea
+                          className="form-textarea"
+                          rows={2}
+                          placeholder="Reply to clinician or ask follow-up question..."
+                          value={replyTextMap[consultationId] || ''}
+                          onChange={(e) => setReplyTextMap({ ...replyTextMap, [consultationId]: e.target.value })}
+                          style={{ borderRadius: 12, marginBottom: 10 }}
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          <button
+                            type="button"
+                            className="btn-black-pill"
+                            disabled={sendingReply || !replyTextMap[consultationId]?.trim()}
+                            onClick={() => handleSendFollowup(consultationId)}
+                          >
+                            <Send size={13} />
+                            <span>{sendingReply ? 'Sending...' : 'Send Message'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
             </div>
           )}
         </main>
@@ -385,7 +639,7 @@ export default function ProfessionalsPage() {
 
       {/* Archival Assurance Callout */}
       <section className="crowd-footer-assurance">
-        <p className="mono-subtle" style={{ textAlign: 'center', letterSpacing: '0.12em', color: '#71717A' }}>
+        <p className="mono-subtle" style={{ textAlign: 'center', letterSpacing: '0.12em', color: 'var(--text-muted)' }}>
           ANON CLINICAL NETWORK • VERIFIED CREDENTIALS • CONFIDENTIAL CONSULTATION
         </p>
       </section>
@@ -399,9 +653,56 @@ export default function ProfessionalsPage() {
             style={{ maxWidth: 600, borderRadius: 20, border: '1px solid var(--border-light)', padding: 32 }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-              <div>
-                <span className="mono-subtle" style={{ display: 'block', color: '#71717A' }}>CONFIDENTIAL INQUIRY</span>
-                <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.4rem', margin: 0 }}>To {selectedPro.displayName}</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ position: 'relative' }}>
+                  {selectedPro.imageUrl ? (
+                    <img
+                      src={selectedPro.imageUrl}
+                      alt={selectedPro.displayName}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const fallback = e.currentTarget.nextElementSibling;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
+                      style={{
+                        width: 50,
+                        height: 50,
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        border: '2px solid var(--border-dark)',
+                        backgroundColor: 'var(--bg-card-alt)',
+                        display: 'block'
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    style={{
+                      width: 50,
+                      height: 50,
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--bg-subtle)',
+                      border: '1px solid var(--border-light)',
+                      display: selectedPro.imageUrl ? 'none' : 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 700,
+                      fontSize: '1.1rem',
+                      color: 'var(--text-main)'
+                    }}
+                  >
+                    {selectedPro.displayName ? selectedPro.displayName.charAt(0) : 'Dr'}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="mono-subtle" style={{ display: 'block', color: 'var(--text-muted)' }}>CONFIDENTIAL INQUIRY</span>
+                  <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.4rem', margin: 0, color: 'var(--text-main)' }}>
+                    To {selectedPro.displayName}
+                  </h3>
+                  <span className="mono-subtle" style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    {selectedPro.licenseType}
+                  </span>
+                </div>
               </div>
               <button
                 type="button"
@@ -425,7 +726,7 @@ export default function ProfessionalsPage() {
                 )}
 
                 <div className="form-group" style={{ marginBottom: 14 }}>
-                  <label className="form-label" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: '#71717A' }}>
+                  <label className="form-label" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
                     Subject / Topic
                   </label>
                   <input
@@ -442,7 +743,7 @@ export default function ProfessionalsPage() {
                 </div>
 
                 <div className="form-group" style={{ marginBottom: 14 }}>
-                  <label className="form-label" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: '#71717A' }}>
+                  <label className="form-label" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
                     Your Question or Consultation Request
                   </label>
                   <textarea
@@ -456,13 +757,13 @@ export default function ProfessionalsPage() {
                     maxLength={2500}
                     style={{ borderRadius: 12, padding: '10px 14px' }}
                   />
-                  <div className="mono-subtle" style={{ fontSize: '0.68rem', marginTop: 4, color: '#A1A1AA' }}>
+                  <div className="mono-subtle" style={{ fontSize: '0.68rem', marginTop: 4, color: 'var(--text-muted)' }}>
                     Never share credit card numbers, home addresses, or real-life names.
                   </div>
                 </div>
 
                 <div className="form-group" style={{ marginBottom: 20 }}>
-                  <label className="form-label" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: '#71717A' }}>
+                  <label className="form-label" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
                     Urgency Level
                   </label>
                   <select

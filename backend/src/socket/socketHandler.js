@@ -245,6 +245,32 @@ export function setupSocketIO(io) {
       }
     });
 
+    // ── Professional clinician dashboard room ───────────────────────────────
+    socket.on('join_professional', ({ professionalId } = {}) => {
+      if (professionalId && typeof professionalId === 'string' && /^[0-9a-fA-F]{24}$/.test(professionalId)) {
+        socket.join(`professional:${professionalId}`);
+      }
+    });
+
+    socket.on('leave_professional', ({ professionalId } = {}) => {
+      if (professionalId && typeof professionalId === 'string') {
+        socket.leave(`professional:${professionalId}`);
+      }
+    });
+
+    // ── Consultation thread room ─────────────────────────────────────────────
+    socket.on('join_consultation', ({ consultationId } = {}) => {
+      if (consultationId && typeof consultationId === 'string' && /^[0-9a-fA-F]{24}$/.test(consultationId)) {
+        socket.join(`consultation:${consultationId}`);
+      }
+    });
+
+    socket.on('leave_consultation', ({ consultationId } = {}) => {
+      if (consultationId && typeof consultationId === 'string') {
+        socket.leave(`consultation:${consultationId}`);
+      }
+    });
+
     // ── Real-time private message delivery ──────────────────────────────────
     socket.on('send_private_message', async ({ conversationId, content } = {}) => {
       try {

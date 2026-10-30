@@ -88,7 +88,9 @@ export async function registerProfessional(req, res, next) {
         id: professional._id,
         email: professional.email,
         displayName: professional.displayName,
+        fullName: professional.fullName,
         licenseType: professional.licenseType,
+        imageUrl: professional.imageUrl || '',
         verificationStatus: professional.verificationStatus,
         createdAt: professional.createdAt
       },
@@ -136,6 +138,7 @@ export async function loginProfessional(req, res, next) {
         displayName: professional.displayName,
         fullName: professional.fullName,
         licenseType: professional.licenseType,
+        imageUrl: professional.imageUrl || '',
         verificationStatus: professional.verificationStatus,
         specialties: professional.specialties,
         languages: professional.languages,
@@ -291,20 +294,53 @@ export async function submitConsultationRequest(req, res, next) {
 
     const professional = await ProfessionalAccount.findOne({
       _id: professionalId,
-      verificationStatus: 'verified'
+      verificationStatus: { $in: ['verified', 'pending'] }
     });
 
     if (!professional) {
       return res.status(404).json({ success: false, error: 'Verified professional not found.' });
     }
 
+    const cleanTopic = xss(topic.trim());
+    const cleanMessage = xss(message.trim());
+    const initialMsg = {
+      senderRole: 'user',
+      senderName: req.identity?.username || 'Anonymous Youth',
+      text: cleanMessage,
+      createdAt: new Date()
+    };
+
     const request = await ConsultationRequest.create({
       professional: professional._id,
       identity: req.identity._id,
-      topic: xss(topic.trim()),
-      message: xss(message.trim()),
-      urgency
+      topic: cleanTopic,
+      message: cleanMessage,
+      urgency,
+      messages: [initialMsg]
     });
+
+    const consultationPayload = {
+      id: request._id,
+      topic: request.topic,
+      message: request.message,
+      urgency: request.urgency,
+      status: request.status,
+      response: '',
+      respondedAt: null,
+      anonymousUser: {
+        username: req.identity?.username || 'Anonymous',
+        avatarSeed: req.identity?.avatarSeed || ''
+      },
+      inquirerPseudonym: req.identity?.username || 'Anonymous Youth',
+      createdAt: request.createdAt,
+      messages: [initialMsg]
+    };
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`professional:${professional._id.toString()}`).emit('new_consultation', consultationPayload);
+      io.to(`user:${req.identity._id.toString()}`).emit('my_consultation_created', consultationPayload);
+    }
 
     res.status(201).json({
       success: true,
@@ -330,13 +366,18 @@ export async function getConsultationsForProfessional(req, res, next) {
           username: c.identity.username,
           avatarSeed: c.identity.avatarSeed
         } : { username: 'Anonymous' },
+        inquirerPseudonym: c.identity ? c.identity.username : 'Anonymous Youth',
         topic: c.topic,
         message: c.message,
         urgency: c.urgency,
         status: c.status,
         response: c.response,
         respondedAt: c.respondedAt,
-        createdAt: c.createdAt
+        createdAt: c.createdAt,
+        messages: c.messages && c.messages.length > 0 ? c.messages : [
+          { senderRole: 'user', senderName: c.identity?.username || 'Anonymous Youth', text: c.message, createdAt: c.createdAt },
+          ...(c.response ? [{ senderRole: 'professional', senderName: req.professional.displayName, text: c.response, createdAt: c.respondedAt || c.updatedAt }] : [])
+        ]
       }))
     });
   } catch (error) {
@@ -362,10 +403,40 @@ export async function respondToConsultation(req, res, next) {
       return res.status(404).json({ success: false, error: 'Consultation request not found.' });
     }
 
-    consultation.response = xss(response.trim());
+    const cleanResponse = xss(response.trim());
+    consultation.response = cleanResponse;
     consultation.status = 'responded';
     consultation.respondedAt = new Date();
+
+    if (!consultation.messages) consultation.messages = [];
+    consultation.messages.push({
+      senderRole: 'professional',
+      senderName: req.professional.displayName,
+      text: cleanResponse,
+      createdAt: consultation.respondedAt
+    });
+
     await consultation.save();
+
+    const io = req.app.get('io');
+    const updatePayload = {
+      id: consultation._id,
+      status: consultation.status,
+      response: consultation.response,
+      respondedAt: consultation.respondedAt,
+      messages: consultation.messages,
+      professional: {
+        id: req.professional._id,
+        displayName: req.professional.displayName,
+        imageUrl: req.professional.imageUrl || ''
+      }
+    };
+
+    if (io) {
+      io.to(`professional:${req.professional._id.toString()}`).emit('consultation_updated', updatePayload);
+      io.to(`user:${consultation.identity.toString()}`).emit('consultation_responded', updatePayload);
+      io.to(`consultation:${consultation._id.toString()}`).emit('consultation_message', updatePayload);
+    }
 
     res.json({
       success: true,
@@ -374,8 +445,87 @@ export async function respondToConsultation(req, res, next) {
         id: consultation._id,
         status: consultation.status,
         response: consultation.response,
-        respondedAt: consultation.respondedAt
+        respondedAt: consultation.respondedAt,
+        messages: consultation.messages
       }
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function addConsultationMessage(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { message } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ success: false, error: 'Message cannot be empty.' });
+    }
+
+    let consultation = null;
+    let senderRole = null;
+    let senderName = 'Anonymous';
+
+    if (req.professional) {
+      senderRole = 'professional';
+      senderName = req.professional.displayName;
+      consultation = await ConsultationRequest.findOne({
+        _id: id,
+        professional: req.professional._id
+      });
+    } else if (req.identity) {
+      senderRole = 'user';
+      senderName = req.identity.username || 'Anonymous Youth';
+      consultation = await ConsultationRequest.findOne({
+        _id: id,
+        identity: req.identity._id
+      });
+    }
+
+    if (!consultation) {
+      return res.status(404).json({ success: false, error: 'Consultation not found or unauthorized.' });
+    }
+
+    const cleanMsg = xss(message.trim());
+    const newMsgObj = {
+      senderRole,
+      senderName,
+      text: cleanMsg,
+      createdAt: new Date()
+    };
+
+    if (!consultation.messages) consultation.messages = [];
+    consultation.messages.push(newMsgObj);
+
+    if (senderRole === 'professional' && (!consultation.response || consultation.status !== 'responded')) {
+      consultation.response = cleanMsg;
+      consultation.status = 'responded';
+      consultation.respondedAt = new Date();
+    }
+
+    await consultation.save();
+
+    const io = req.app.get('io');
+    const updatePayload = {
+      id: consultation._id,
+      status: consultation.status,
+      response: consultation.response,
+      respondedAt: consultation.respondedAt,
+      messages: consultation.messages,
+      newMessage: newMsgObj
+    };
+
+    if (io) {
+      io.to(`professional:${consultation.professional.toString()}`).emit('consultation_message', updatePayload);
+      io.to(`user:${consultation.identity.toString()}`).emit('consultation_message', updatePayload);
+      io.to(`consultation:${consultation._id.toString()}`).emit('consultation_message', updatePayload);
+    }
+
+    res.json({
+      success: true,
+      message: 'Message delivered.',
+      consultation: updatePayload
     });
   } catch (error) {
     next(error);
@@ -386,7 +536,7 @@ export async function getMyAnonymousConsultations(req, res, next) {
   try {
     const consultations = await ConsultationRequest.find({ identity: req.identity._id })
       .sort({ createdAt: -1 })
-      .populate('professional', 'displayName licenseType specialties');
+      .populate('professional', 'displayName licenseType specialties imageUrl');
 
     res.json({
       success: true,
@@ -395,7 +545,8 @@ export async function getMyAnonymousConsultations(req, res, next) {
         professional: c.professional ? {
           id: c.professional._id,
           displayName: c.professional.displayName,
-          licenseType: c.professional.licenseType
+          licenseType: c.professional.licenseType,
+          imageUrl: c.professional.imageUrl || ''
         } : null,
         topic: c.topic,
         message: c.message,
@@ -403,7 +554,11 @@ export async function getMyAnonymousConsultations(req, res, next) {
         status: c.status,
         response: c.response,
         respondedAt: c.respondedAt,
-        createdAt: c.createdAt
+        createdAt: c.createdAt,
+        messages: c.messages && c.messages.length > 0 ? c.messages : [
+          { senderRole: 'user', senderName: req.identity?.username || 'You', text: c.message, createdAt: c.createdAt },
+          ...(c.response ? [{ senderRole: 'professional', senderName: c.professional?.displayName || 'Clinician', text: c.response, createdAt: c.respondedAt || c.updatedAt }] : [])
+        ]
       }))
     });
   } catch (error) {

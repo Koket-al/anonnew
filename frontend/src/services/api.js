@@ -125,7 +125,7 @@ export async function request(endpoint, options = {}) {
     'x-api-client': 'true',
     ...(anonToken ? { 'x-anon-token': anonToken } : {}),
     ...(adminToken ? { 'x-admin-token': adminToken, Authorization: `Bearer ${adminToken}` } : {}),
-    ...(proToken ? { 'x-pro-token': proToken } : {}),
+    ...(proToken ? { 'x-pro-token': proToken, Authorization: `Bearer ${proToken}` } : {}),
     ...(options.headers || {})
   };
 
@@ -498,6 +498,13 @@ export async function respondToConsultation(id, response) {
   return await request(`/professionals/consultations/${id}/respond`, {
     method: 'POST',
     body: JSON.stringify({ response })
+  });
+}
+
+export async function sendConsultationMessage(id, message) {
+  return await request(`/professionals/consultations/${id}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ message })
   });
 }
 

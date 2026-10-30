@@ -3722,8 +3722,48 @@ a.link-underline {
 }
 
 /* ==========================================================================
-   Dark Theme: High Contrast Pure White Text on Black Backgrounds
+   Light & Dark Theme: High Contrast Readable Text & Cards for How ANON Works
    ========================================================================== */
+[data-theme="white"] .steps-frame,
+:root:not([data-theme="dark"]) .steps-frame {
+  background: #FFFFFF;
+  border-color: var(--border-light);
+}
+
+[data-theme="white"] .step-item,
+:root:not([data-theme="dark"]) .step-item {
+  background: #FFFFFF !important;
+  border-color: #E5E3DC !important;
+  color: #141413 !important;
+}
+
+[data-theme="white"] .step-item-title,
+:root:not([data-theme="dark"]) .step-item-title {
+  color: #141413 !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="white"] .step-item-num,
+:root:not([data-theme="dark"]) .step-item-num {
+  color: #141413 !important;
+}
+
+[data-theme="white"] .step-lead,
+:root:not([data-theme="dark"]) .step-lead {
+  color: #141413 !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="white"] .step-item-desc,
+:root:not([data-theme="dark"]) .step-item-desc {
+  color: #3F3F46 !important;
+}
+
+[data-theme="dark"] .steps-frame {
+  background: #141413 !important;
+  border-color: #282724 !important;
+}
+
 [data-theme="dark"] .steps-frame-title {
   color: #FFFFFF !important;
 }
@@ -3733,7 +3773,7 @@ a.link-underline {
 }
 
 [data-theme="dark"] .step-item {
-  background: #141413 !important;
+  background: #181716 !important;
   border-color: #383734 !important;
   color: #FFFFFF !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
@@ -3741,7 +3781,7 @@ a.link-underline {
 
 [data-theme="dark"] .step-item:hover,
 [data-theme="dark"] .step-item:focus-within {
-  background: #1C1B19 !important;
+  background: #21201D !important;
   border-color: #FFFFFF !important;
   box-shadow: 0 18px 38px -10px rgba(0, 0, 0, 0.65), 0 0 0 1px #FFFFFF !important;
 }

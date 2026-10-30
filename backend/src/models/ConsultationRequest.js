@@ -46,7 +46,30 @@ const consultationRequestSchema = new mongoose.Schema(
     respondedAt: {
       type: Date,
       default: null
-    }
+    },
+    messages: [
+      {
+        senderRole: {
+          type: String,
+          enum: ['user', 'professional'],
+          required: true
+        },
+        senderName: {
+          type: String,
+          default: 'Anonymous'
+        },
+        text: {
+          type: String,
+          required: true,
+          trim: true,
+          maxlength: 4000
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now
+        }
+      }
+    ]
   },
   { timestamps: true }
 );
