@@ -3894,4 +3894,266 @@ a.link-underline {
   box-shadow: 0 4px 14px rgba(255, 255, 255, 0.15) !important;
 }
 
+/* ==========================================================================
+   Private Message Bubbles
+   ========================================================================== */
+.pm-chat-bubble {
+  max-width: 75%;
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+.pm-chat-bubble.mine {
+  background: #141413;
+  color: #FFFFFF;
+}
+
+.pm-chat-bubble.partner {
+  background: #F4F4F5;
+  color: #141413;
+  border: 1px solid var(--border-light);
+}
+
+[data-theme="dark"] .pm-chat-bubble.mine {
+  background: #272624 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #4A4843 !important;
+}
+
+[data-theme="dark"] .pm-chat-bubble.partner {
+  background: #181716 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #383734 !important;
+}
+
+/* ==========================================================================
+   Dark Theme: High Contrast Pure White Text for Discussions & Communities
+   ========================================================================== */
+[data-theme="dark"] .crowd-card {
+  background: #141413 !important;
+  border-color: #383734 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+}
+
+[data-theme="dark"] .crowd-card:hover {
+  border-color: #FFFFFF !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65) !important;
+}
+
+[data-theme="dark"] .crowd-card-title,
+[data-theme="dark"] .crowd-card-title-link {
+  color: #FFFFFF !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="dark"] .crowd-card-title-link:hover {
+  color: #FFFFFF !important;
+  text-decoration: underline !important;
+}
+
+[data-theme="dark"] .crowd-card-body,
+[data-theme="dark"] .crowd-detail-body,
+[data-theme="dark"] .reply-content-body {
+  color: #FFFFFF !important;
+  line-height: 1.7 !important;
+}
+
+[data-theme="dark"] .crowd-author-badge,
+[data-theme="dark"] .crowd-author-name {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .crowd-card-time {
+  color: #E4E4E7 !important;
+}
+
+[data-theme="dark"] .crowd-you-tag {
+  color: #D4D4D8 !important;
+}
+
+[data-theme="dark"] .crowd-card-footer {
+  border-top-color: #383734 !important;
+}
+
+[data-theme="dark"] .crowd-tag-pill {
+  background: #252422 !important;
+  border-color: #4A4843 !important;
+  color: #FFFFFF !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="dark"] .crowd-tag-pill.community {
+  background: transparent !important;
+  border-color: #4A4843 !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .crowd-tag-pill.community:hover {
+  border-color: #FFFFFF !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .crowd-tag-pill.highlight {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #34D399 !important;
+  border-color: rgba(16, 185, 129, 0.45) !important;
+}
+
+[data-theme="dark"] .crowd-replies-link {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .crowd-replies-link:hover {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .crowd-btn-been-through {
+  background: #252422 !important;
+  border-color: #4A4843 !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .crowd-btn-been-through:hover {
+  background: #33322E !important;
+  border-color: #FFFFFF !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .crowd-btn-been-through.active {
+  background: #FFFFFF !important;
+  color: #141413 !important;
+  border-color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .crowd-pill-btn {
+  background: #252422 !important;
+  border-color: #4A4843 !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .crowd-pill-btn:hover {
+  background: #33322E !important;
+  border-color: #FFFFFF !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .crowd-pill-btn.active {
+  background: #FFFFFF !important;
+  color: #141413 !important;
+  border-color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .crowd-connect-btn {
+  background: #252422 !important;
+  border-color: #4A4843 !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .crowd-connect-btn:hover {
+  background: #33322E !important;
+  border-color: #FFFFFF !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .crowd-cat-pill {
+  background: #181716 !important;
+  border-color: #383734 !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .crowd-cat-pill:hover {
+  background: #252422 !important;
+  border-color: #FFFFFF !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .crowd-cat-pill.active {
+  background: #FFFFFF !important;
+  border-color: #FFFFFF !important;
+  color: #141413 !important;
+}
+
+[data-theme="dark"] .crowd-search-box {
+  background: #181716 !important;
+  border-color: #383734 !important;
+}
+
+[data-theme="dark"] .crowd-search-input {
+  background: #181716 !important;
+  border-color: #383734 !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .crowd-search-input:focus {
+  border-color: #FFFFFF !important;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.12) !important;
+}
+
+[data-theme="dark"] .crowd-search-icon,
+[data-theme="dark"] .crowd-search-clear {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .crowd-sort-select {
+  background: #181716 !important;
+  border-color: #383734 !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .crowd-sort-select option {
+  background: #181716 !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .crowd-empty-title {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .crowd-empty-desc {
+  color: #F4F4F5 !important;
+}
+
+[data-theme="dark"] .crowd-assurance-item {
+  color: #E4E4E7 !important;
+}
+
+[data-theme="dark"] .crowd-assurance-icon {
+  color: #FFFFFF !important;
+  opacity: 0.9 !important;
+}
+
+[data-theme="dark"] .crowd-btn-report {
+  color: #A1A1AA !important;
+}
+
+[data-theme="dark"] .crowd-btn-report:hover {
+  background: rgba(220, 38, 38, 0.2) !important;
+  color: #EF4444 !important;
+}
+
+/* Modals Dark Mode Support */
+[data-theme="dark"] .modal-dialog {
+  background: #141413 !important;
+  border-color: #383734 !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .modal-dialog h1,
+[data-theme="dark"] .modal-dialog h2,
+[data-theme="dark"] .modal-dialog h3,
+[data-theme="dark"] .modal-dialog h4,
+[data-theme="dark"] .modal-dialog label {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .modal-dialog p {
+  color: #F4F4F5 !important;
+}
+
+
 

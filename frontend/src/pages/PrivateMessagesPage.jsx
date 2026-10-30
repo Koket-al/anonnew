@@ -479,23 +479,23 @@ export default function PrivateMessagesPage() {
           {/* Pending Requests Section */}
           {pendingRequests.length > 0 && (
             <div style={{ marginBottom: 20 }}>
-              <span className="mono-subtle" style={{ display: 'block', marginBottom: 8, color: '#71717A' }}>
+              <span className="mono-subtle" style={{ display: 'block', marginBottom: 8, color: 'var(--text-muted)' }}>
                 REQUESTS ({pendingRequests.length})
               </span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {pendingRequests.map((req) => (
-                  <div key={req.id} style={{ padding: 12, background: '#F4F4F5', borderRadius: 12 }}>
+                  <div key={req.id} style={{ padding: 12, background: 'var(--bg-card-alt)', borderRadius: 12, border: '1px solid var(--border-light)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                      <span style={{ fontWeight: 600, fontSize: '0.875rem', color: '#141413' }}>{req.partner?.username}</span>
+                      <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-main)' }}>{req.partner?.username}</span>
                       <span className="crowd-tag-pill" style={{ padding: '2px 8px' }}>PENDING</span>
                     </div>
                     {req.initialNote && (
-                      <div style={{ fontSize: '0.8rem', color: '#71717A', fontStyle: 'italic', marginBottom: 8 }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: 8 }}>
                         "{req.initialNote}"
                       </div>
                     )}
                     {req.requestedByMe ? (
-                      <span className="mono-subtle" style={{ color: '#71717A' }}>AWAITING RESPONSE...</span>
+                      <span className="mono-subtle" style={{ color: 'var(--text-muted)' }}>AWAITING RESPONSE...</span>
                     ) : (
                       <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                         <button
@@ -526,14 +526,14 @@ export default function PrivateMessagesPage() {
 
           {/* Active Conversations List */}
           <div style={{ flex: 1, overflowY: 'auto' }}>
-            <span className="mono-subtle" style={{ display: 'block', marginBottom: 8, color: '#71717A' }}>
+            <span className="mono-subtle" style={{ display: 'block', marginBottom: 8, color: 'var(--text-muted)' }}>
               CONVERSATIONS ({activeChats.length})
             </span>
 
             {loading ? (
-              <div className="mono-subtle" style={{ padding: 12, color: '#71717A' }}>LOADING CONVERSATIONS...</div>
+              <div className="mono-subtle" style={{ padding: 12, color: 'var(--text-muted)' }}>LOADING CONVERSATIONS...</div>
             ) : activeChats.length === 0 ? (
-              <div style={{ padding: 16, textAlign: 'center', fontSize: '0.85rem', color: '#71717A' }}>
+              <div style={{ padding: 16, textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                 No active conversations yet. You can request connection from questions in the discussion feed.
               </div>
             ) : (
@@ -550,18 +550,18 @@ export default function PrivateMessagesPage() {
                         cursor: 'pointer',
                         borderRadius: 12,
                         background: isSelected
-                          ? '#141413'
+                          ? 'var(--primary)'
                           : hasUnread
-                          ? '#F8FAFC'
+                          ? 'var(--bg-subtle)'
                           : 'transparent',
-                        color: isSelected ? '#FFFFFF' : '#141413',
+                        color: isSelected ? 'var(--bg-page)' : 'var(--text-main)',
                         border: isSelected
-                          ? '1px solid #141413'
+                          ? '1px solid var(--border-dark)'
                           : hasUnread
                           ? '1px solid #93C5FD'
                           : '1px solid var(--border-light)',
                         borderLeft: isSelected
-                          ? '4px solid #141413'
+                          ? '4px solid var(--border-dark)'
                           : hasUnread
                           ? '4px solid #2563EB'
                           : '1px solid var(--border-light)',
@@ -579,7 +579,7 @@ export default function PrivateMessagesPage() {
                       {c.lastMessage?.text && (
                         <div style={{
                           fontSize: '0.775rem',
-                          color: isSelected ? '#C2C1BA' : hasUnread ? '#1E293B' : '#71717A',
+                          color: isSelected ? 'var(--bg-page)' : hasUnread ? 'var(--text-main)' : 'var(--text-muted)',
                           fontWeight: hasUnread ? 600 : 400,
                           marginTop: 3,
                           overflow: 'hidden',
@@ -716,8 +716,9 @@ export default function PrivateMessagesPage() {
                               fontSize: '0.9rem',
                               lineHeight: 1.5,
                               resize: 'vertical',
-                              background: '#FFFFFF',
-                              color: '#141413'
+                              background: 'var(--bg-card)',
+                              color: 'var(--text-main)',
+                              border: '1px solid var(--border-light)'
                             }}
                             autoFocus
                           />
@@ -744,23 +745,22 @@ export default function PrivateMessagesPage() {
                         </div>
                       ) : (
                         <div
+                          className={`pm-chat-bubble ${m.isMine ? 'mine' : 'partner'}`}
                           style={{
                             maxWidth: '75%',
                             padding: '12px 16px',
                             borderRadius: 14,
                             fontSize: '0.9375rem',
                             lineHeight: 1.55,
-                            background: m.isMine ? '#141413' : '#F4F4F5',
-                            color: m.isMine ? '#FFFFFF' : '#141413',
-                            border: m.isMine ? 'none' : '1px solid var(--border-light)',
-                            whiteSpace: 'pre-line'
+                            whiteSpace: 'pre-line',
+                            wordBreak: 'break-word'
                           }}
                         >
                           {m.content}
                         </div>
                       )}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                        <span className="mono-subtle" style={{ fontSize: '0.68rem', color: '#71717A' }}>
+                        <span className="mono-subtle" style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
                           {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                         {m.isEdited && (
@@ -869,24 +869,25 @@ export default function PrivateMessagesPage() {
               )}
             </>
           ) : (
-            <div style={{ margin: 'auto', textAlign: 'center', color: '#71717A', padding: '40px 20px' }}>
+            <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--text-muted)', padding: '40px 20px' }}>
               <div style={{
                 width: 52,
                 height: 52,
                 borderRadius: '50%',
-                background: '#F4F4F5',
+                background: 'var(--bg-card-alt)',
+                border: '1px solid var(--border-light)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '0 auto 14px auto',
-                color: '#71717A'
+                color: 'var(--text-muted)'
               }}>
                 <MessageSquare size={24} />
               </div>
-              <h4 style={{ fontFamily: 'var(--font-mono)', fontSize: '1rem', fontWeight: 600, color: '#141413', margin: '0 0 6px 0' }}>
+              <h4 style={{ fontFamily: 'var(--font-mono)', fontSize: '1rem', fontWeight: 600, color: 'var(--text-main)', margin: '0 0 6px 0' }}>
                 Private Messages
               </h4>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: '#71717A', maxWidth: 300, lineHeight: 1.4 }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: 300, lineHeight: 1.4 }}>
                 Click a conversation on the left to open and view messages.
               </p>
             </div>
@@ -896,7 +897,7 @@ export default function PrivateMessagesPage() {
 
       {/* Archival Assurance Callout */}
       <section className="crowd-footer-assurance">
-        <p className="mono-subtle" style={{ textAlign: 'center', letterSpacing: '0.12em', color: '#71717A' }}>
+        <p className="mono-subtle" style={{ textAlign: 'center', letterSpacing: '0.12em', color: 'var(--text-muted)' }}>
           ANON PRIVATE MESSAGES • MUTUALLY AUTHORIZED • ZERO REAL-NAME TRACE
         </p>
       </section>

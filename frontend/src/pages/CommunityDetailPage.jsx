@@ -397,9 +397,9 @@ export default function CommunityDetailPage() {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
-                    color: isCommunityMuted(community.id || community.slug) ? '#DC2626' : '#141413',
-                    borderColor: isCommunityMuted(community.id || community.slug) ? '#FECACA' : 'rgba(0,0,0,0.12)',
-                    background: isCommunityMuted(community.id || community.slug) ? '#FEF2F2' : '#FFFFFF'
+                    color: isCommunityMuted(community.id || community.slug) ? '#DC2626' : 'var(--text-main)',
+                    borderColor: isCommunityMuted(community.id || community.slug) ? '#FECACA' : 'var(--border-light)',
+                    background: isCommunityMuted(community.id || community.slug) ? 'rgba(239, 68, 68, 0.12)' : 'var(--bg-card)'
                   }}
                   title={isCommunityMuted(community.id || community.slug) ? 'Unmute notifications for this community' : 'Mute notifications for this community'}
                 >
@@ -413,7 +413,7 @@ export default function CommunityDetailPage() {
                   style={{
                     color: '#DC2626',
                     borderColor: '#FECACA',
-                    background: '#FFFFFF',
+                    background: 'var(--bg-card)',
                     padding: '8px 16px',
                     fontSize: '0.85rem',
                     display: 'inline-flex',
@@ -442,7 +442,6 @@ export default function CommunityDetailPage() {
                 type="button"
                 className="crowd-pill-btn"
                 onClick={() => setIsAskModalOpen(true)}
-                style={{ background: '#FFFFFF' }}
               >
                 <Plus size={14} />
                 <span>Ask in this Sphere</span>
@@ -459,8 +458,8 @@ export default function CommunityDetailPage() {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
-                    background: isMembersModalOpen ? '#141413' : '#FFFFFF',
-                    color: isMembersModalOpen ? '#FFFFFF' : '#141413'
+                    background: isMembersModalOpen ? 'var(--primary)' : 'var(--bg-card)',
+                    color: isMembersModalOpen ? 'var(--bg-page)' : 'var(--text-main)'
                   }}
                   title="View anonymous members who joined your sphere"
                 >
@@ -519,11 +518,11 @@ export default function CommunityDetailPage() {
           {/* Guidelines */}
           {community.rules && community.rules.length > 0 && !isEditing && (
             <div style={{ marginTop: 24, paddingTop: 18, borderTop: '1px solid rgba(0,0,0,0.06)', maxWidth: 560, margin: '24px auto 0 auto', textAlign: 'left' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: '#71717A', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 <Shield size={12} />
                 <span>Sphere Guidelines</span>
               </div>
-              <ul style={{ margin: 0, paddingLeft: 18, fontSize: '0.875rem', color: '#52525B', lineHeight: 1.6 }}>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
                 {community.rules.map((r, i) => (
                   <li key={i}>{r}</li>
                 ))}
@@ -546,7 +545,7 @@ export default function CommunityDetailPage() {
                   width: 58,
                   height: 58,
                   borderRadius: '50%',
-                  background: '#F4F4F5',
+                  background: 'var(--bg-card-alt)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -554,7 +553,7 @@ export default function CommunityDetailPage() {
                   border: '1px solid var(--border-light)'
                 }}
               >
-                <Lock size={26} style={{ color: '#141413' }} />
+                <Lock size={26} style={{ color: 'var(--text-main)' }} />
               </div>
               <span className="manifesto-pill">Members Only Sanctuary</span>
               <h3 className="crowd-empty-title" style={{ marginTop: 12, fontSize: '1.6rem' }}>
@@ -645,10 +644,10 @@ export default function CommunityDetailPage() {
             style={{
               width: '100%',
               maxWidth: 560,
-              background: '#FFFFFF',
+              background: 'var(--bg-card)',
               borderRadius: 20,
               boxShadow: '0 25px 60px -15px rgba(0,0,0,0.35)',
-              border: '1px solid #141413',
+              border: '1px solid var(--border-light)',
               position: 'relative',
               margin: 'auto',
               maxHeight: '85vh',
@@ -673,7 +672,7 @@ export default function CommunityDetailPage() {
                 background: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
-                color: '#71717A',
+                color: 'var(--text-muted)',
                 padding: 4
               }}
               aria-label="Close modal"
@@ -688,8 +687,9 @@ export default function CommunityDetailPage() {
                   width: 38,
                   height: 38,
                   borderRadius: '50%',
-                  background: '#F4F4F5',
-                  color: '#141413',
+                  background: 'var(--bg-card-alt)',
+                  color: 'var(--text-main)',
+                  border: '1px solid var(--border-light)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -702,13 +702,13 @@ export default function CommunityDetailPage() {
                 <span className="mono-subtle" style={{ display: 'block', fontSize: '0.72rem', letterSpacing: '0.06em' }}>
                   COMMUNITY ROSTER // c/{community.name}
                 </span>
-                <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.4rem', margin: 0, color: '#141413' }}>
+                <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.4rem', margin: 0, color: 'var(--text-main)' }}>
                   Joined Anonymous Members
                 </h3>
               </div>
             </div>
 
-            <p style={{ fontSize: '0.85rem', lineHeight: 1.5, color: '#52525B', marginBottom: 14 }}>
+            <p style={{ fontSize: '0.85rem', lineHeight: 1.5, color: 'var(--text-muted)', marginBottom: 14 }}>
               As community creator, you can see all anonymous pseudonyms holding membership in your sphere ({members.length} members).
             </p>
 
@@ -731,11 +731,11 @@ export default function CommunityDetailPage() {
               }}
             >
               {loadingMembers ? (
-                <div style={{ padding: '32px 0', textAlign: 'center', color: '#71717A' }}>
+                <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
                   <span className="mono-subtle">LOADING SPHERE MEMBERS...</span>
                 </div>
               ) : members.length === 0 ? (
-                <div style={{ padding: '32px 0', textAlign: 'center', color: '#71717A' }}>
+                <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
                   <p style={{ fontSize: '0.9rem' }}>No members found in this sphere yet.</p>
                 </div>
               ) : (
@@ -747,7 +747,7 @@ export default function CommunityDetailPage() {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       padding: '12px 14px',
-                      background: '#F9FAFB',
+                      background: 'var(--bg-card-alt)',
                       borderRadius: 12,
                       border: '1px solid var(--border-light)',
                       gap: 12,
@@ -760,7 +760,7 @@ export default function CommunityDetailPage() {
                         style={{
                           width: 8,
                           height: 8,
-                          background: member.role === 'creator' ? '#DC2626' : '#141413',
+                          background: member.role === 'creator' ? '#DC2626' : 'var(--primary)',
                           flexShrink: 0
                         }}
                       />
@@ -771,7 +771,7 @@ export default function CommunityDetailPage() {
                               fontFamily: 'var(--font-mono)',
                               fontWeight: 700,
                               fontSize: '0.95rem',
-                              color: '#141413'
+                              color: 'var(--text-main)'
                             }}
                           >
                             {member.username}

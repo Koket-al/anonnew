@@ -52,7 +52,7 @@ const markdownComponents = {
         fontFamily: 'var(--font-serif)',
         fontSize: '1.25rem',
         fontWeight: 600,
-        color: '#141413',
+        color: 'var(--text-main)',
         marginTop: 14,
         marginBottom: 8,
         lineHeight: 1.3
@@ -66,7 +66,7 @@ const markdownComponents = {
         fontFamily: 'var(--font-serif)',
         fontSize: '1.15rem',
         fontWeight: 600,
-        color: '#141413',
+        color: 'var(--text-main)',
         marginTop: 12,
         marginBottom: 6,
         lineHeight: 1.3
@@ -80,7 +80,7 @@ const markdownComponents = {
         fontFamily: 'var(--font-sans)',
         fontSize: '1.02rem',
         fontWeight: 600,
-        color: '#141413',
+        color: 'var(--text-main)',
         marginTop: 10,
         marginBottom: 6,
         lineHeight: 1.3
@@ -94,7 +94,7 @@ const markdownComponents = {
         fontFamily: 'var(--font-sans)',
         fontSize: '0.94rem',
         fontWeight: 600,
-        color: '#141413',
+        color: 'var(--text-main)',
         marginTop: 8,
         marginBottom: 4,
         lineHeight: 1.3
@@ -107,7 +107,7 @@ const markdownComponents = {
       style={{
         margin: '0 0 10px 0',
         lineHeight: 1.7,
-        color: '#27272A',
+        color: 'var(--text-main)',
         fontSize: '0.9375rem'
       }}
       {...props}
@@ -141,7 +141,7 @@ const markdownComponents = {
     <li
       style={{
         lineHeight: 1.6,
-        color: '#27272A',
+        color: 'var(--text-main)',
         fontSize: '0.9375rem'
       }}
       {...props}
@@ -151,7 +151,7 @@ const markdownComponents = {
     <strong
       style={{
         fontWeight: 600,
-        color: '#09090B'
+        color: 'var(--text-main)'
       }}
       {...props}
     />
@@ -159,13 +159,13 @@ const markdownComponents = {
   blockquote: ({ node, ...props }) => (
     <blockquote
       style={{
-        borderLeft: '3px solid #141413',
-        background: 'rgba(20, 20, 19, 0.03)',
+        borderLeft: '3px solid var(--border-dark)',
+        background: 'var(--bg-subtle)',
         padding: '8px 14px',
         borderRadius: '0 8px 8px 0',
         margin: '10px 0',
         fontStyle: 'italic',
-        color: '#52525B'
+        color: 'var(--text-muted)'
       }}
       {...props}
     />

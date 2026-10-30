@@ -124,14 +124,14 @@ export default function AskQuestionModal({
                   border: '1px solid var(--border-light)',
                   borderRadius: 10,
                   fontSize: '0.875rem',
-                  color: '#141413',
+                  color: 'var(--text-main)',
                   fontWeight: 500,
                   minHeight: 42
                 }}
               >
                 {targetCommunityId ? (
                   <>
-                    <Users size={16} style={{ color: '#71717A', flexShrink: 0 }} />
+                    <Users size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                     <span style={{ fontWeight: 600 }}>c/{communityName || 'Community'}</span>
                     <span
                       className="crowd-tag-pill highlight"
@@ -142,7 +142,7 @@ export default function AskQuestionModal({
                   </>
                 ) : (
                   <>
-                    <Sparkles size={16} style={{ color: '#71717A', flexShrink: 0 }} />
+                    <Sparkles size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                     <span>Public Discussion Feed</span>
                   </>
                 )}

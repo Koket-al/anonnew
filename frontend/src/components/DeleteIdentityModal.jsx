@@ -20,10 +20,10 @@ export default function DeleteIdentityModal({ isOpen, onClose, targetIdentity, o
         style={{
           width: '100%',
           maxWidth: 540,
-          background: '#FFFFFF',
+          background: 'var(--bg-card)',
           borderRadius: 20,
           boxShadow: '0 25px 60px -15px rgba(0,0,0,0.35)',
-          border: '1px solid #141413',
+          border: '1px solid var(--border-light)',
           position: 'relative',
           margin: 'auto'
         }}
@@ -45,7 +45,7 @@ export default function DeleteIdentityModal({ isOpen, onClose, targetIdentity, o
             background: 'transparent',
             border: 'none',
             cursor: 'pointer',
-            color: '#71717A',
+            color: 'var(--text-muted)',
             padding: 4
           }}
           aria-label="Close modal"
@@ -73,7 +73,7 @@ export default function DeleteIdentityModal({ isOpen, onClose, targetIdentity, o
             <span className="mono-subtle" style={{ color: '#DC2626', display: 'block', fontSize: '0.72rem' }}>
               CONSCIOUS REMOVAL //
             </span>
-            <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.4rem', margin: 0, color: '#141413' }}>
+            <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.4rem', margin: 0, color: 'var(--text-main)' }}>
               Remove Identity
             </h3>
           </div>
@@ -83,7 +83,7 @@ export default function DeleteIdentityModal({ isOpen, onClose, targetIdentity, o
         <div
           style={{
             padding: '12px 16px',
-            background: '#F4F4F5',
+            background: 'var(--bg-card-alt)',
             borderRadius: 12,
             border: '1px solid var(--border-light)',
             display: 'flex',
@@ -96,11 +96,11 @@ export default function DeleteIdentityModal({ isOpen, onClose, targetIdentity, o
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
             <span className="identity-dot" style={{ width: 8, height: 8, flexShrink: 0 }} />
-            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 'clamp(0.95rem, 3.5vw, 1.1rem)', letterSpacing: '0.04em', wordBreak: 'break-all' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 'clamp(0.95rem, 3.5vw, 1.1rem)', letterSpacing: '0.04em', color: 'var(--text-main)', wordBreak: 'break-all' }}>
               {targetIdentity.username}
             </span>
           </div>
-          <span className="mono-subtle" style={{ fontSize: '0.72rem', color: '#71717A', flexShrink: 0 }}>
+          <span className="mono-subtle" style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flexShrink: 0 }}>
             CRYPTOGRAPHIC CODE
           </span>
         </div>
@@ -108,8 +108,8 @@ export default function DeleteIdentityModal({ isOpen, onClose, targetIdentity, o
         {/* AI Chat & Community Warning Box */}
         <div
           style={{
-            background: '#FEF2F2',
-            border: '1px solid #FCA5A5',
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
             borderRadius: 12,
             padding: '12px 14px',
             marginBottom: 16,
@@ -119,18 +119,18 @@ export default function DeleteIdentityModal({ isOpen, onClose, targetIdentity, o
           }}
         >
           <Sparkles size={16} color="#DC2626" style={{ flexShrink: 0, marginTop: 2 }} />
-          <div style={{ fontSize: '0.82rem', lineHeight: 1.5, color: '#991B1B' }}>
+          <div style={{ fontSize: '0.82rem', lineHeight: 1.5, color: '#EF4444' }}>
             <strong>Permanent AI Sanctuary & Community Warning:</strong> Removing this identity will permanently delete your confidential <strong>AI Well-being Guide conversation history</strong> and withdraw you from all joined communities. Once removed, this identity and its AI chat history cannot be recovered.
           </div>
         </div>
 
-        <p style={{ fontSize: '0.875rem', lineHeight: 1.6, color: '#52525B', marginBottom: 18 }}>
+        <p style={{ fontSize: '0.875rem', lineHeight: 1.6, color: 'var(--text-muted)', marginBottom: 18 }}>
           Identities on ANON persist on your device indefinitely even when you switch personas, unless you consciously choose to remove them.
         </p>
 
         {/* Content Choice Selection */}
         <div style={{ marginBottom: 22 }}>
-          <span className="mono-subtle" style={{ display: 'block', marginBottom: 10, color: '#141413', fontWeight: 600 }}>
+          <span className="mono-subtle" style={{ display: 'block', marginBottom: 10, color: 'var(--text-main)', fontWeight: 600 }}>
             WHAT SHOULD HAPPEN TO YOUR QUESTIONS & MESSAGES?
           </span>
 
@@ -144,8 +144,8 @@ export default function DeleteIdentityModal({ isOpen, onClose, targetIdentity, o
                 padding: '14px 16px',
                 borderRadius: 12,
                 cursor: 'pointer',
-                border: !deleteMessages ? '2px solid #141413' : '1px solid var(--border-light)',
-                background: !deleteMessages ? '#FAFAFA' : '#FFFFFF',
+                border: !deleteMessages ? '2px solid var(--border-dark)' : '1px solid var(--border-light)',
+                background: !deleteMessages ? 'var(--bg-subtle)' : 'var(--bg-card)',
                 transition: 'all 0.15s ease'
               }}
             >
@@ -154,14 +154,14 @@ export default function DeleteIdentityModal({ isOpen, onClose, targetIdentity, o
                 name="msgAction"
                 checked={!deleteMessages}
                 onChange={() => setDeleteMessages(false)}
-                style={{ marginTop: 3, accentColor: '#141413' }}
+                style={{ marginTop: 3, accentColor: 'var(--primary)' }}
               />
               <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: '0.9rem', color: '#141413' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)' }}>
                   <HeartHandshake size={14} color="#16A34A" />
                   <span>Leave messages for others (Recommended)</span>
                 </div>
-                <div style={{ fontSize: '0.8rem', color: '#71717A', marginTop: 4, lineHeight: 1.45 }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.45 }}>
                   Your questions, replies, and lived experience notes stay visible to help community peers who face the same hardships. Only the persona code is deleted.
                 </div>
               </div>
@@ -177,7 +177,7 @@ export default function DeleteIdentityModal({ isOpen, onClose, targetIdentity, o
                 borderRadius: 12,
                 cursor: 'pointer',
                 border: deleteMessages ? '2px solid #DC2626' : '1px solid var(--border-light)',
-                background: deleteMessages ? '#FEF2F2' : '#FFFFFF',
+                background: deleteMessages ? 'rgba(239, 68, 68, 0.12)' : 'var(--bg-card)',
                 transition: 'all 0.15s ease'
               }}
             >
@@ -193,7 +193,7 @@ export default function DeleteIdentityModal({ isOpen, onClose, targetIdentity, o
                   <Trash2 size={14} />
                   <span>Purge all my questions, replies & private messages</span>
                 </div>
-                <div style={{ fontSize: '0.8rem', color: '#71717A', marginTop: 4, lineHeight: 1.45 }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.45 }}>
                   Permanently deletes all questions, comments, and private messages sent under <code style={{ fontFamily: 'var(--font-mono)' }}>{targetIdentity.username}</code> with zero trace.
                 </div>
               </div>

@@ -64,7 +64,7 @@ export default function PostCard({ post, onReport, onConnectRequest, onDeletePos
           <Clock size={12} />
           <span>{formattedDate}</span>
           {post.isEdited && (
-            <span className="mono-subtle" style={{ fontSize: '0.7rem', color: '#71717A', fontStyle: 'italic', marginLeft: 4 }}>
+            <span className="mono-subtle" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontStyle: 'italic', marginLeft: 4 }}>
               (edited)
             </span>
           )}
@@ -92,7 +92,7 @@ export default function PostCard({ post, onReport, onConnectRequest, onDeletePos
             {post.author?.isRemoved && (
               <span
                 className="crowd-tag-pill"
-                style={{ fontSize: '0.65rem', padding: '1px 6px', background: '#F4F4F5', color: '#71717A', border: '1px solid #E4E4E7' }}
+                style={{ fontSize: '0.65rem', padding: '1px 6px', background: 'var(--bg-card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}
               >
                 Identity Removed
               </span>

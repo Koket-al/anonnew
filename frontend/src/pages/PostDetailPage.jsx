@@ -408,7 +408,7 @@ export default function PostDetailPage() {
                 width: 58,
                 height: 58,
                 borderRadius: '50%',
-                background: '#F4F4F5',
+                background: 'var(--bg-card-alt)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -416,7 +416,7 @@ export default function PostDetailPage() {
                 border: '1px solid var(--border-light)'
               }}
             >
-              <Lock size={26} style={{ color: '#141413' }} />
+              <Lock size={26} style={{ color: 'var(--text-main)' }} />
             </div>
             <span className="manifesto-pill">Members Only Discussion</span>
             <h3 className="crowd-empty-title" style={{ marginTop: 12, fontSize: '1.6rem' }}>
@@ -438,7 +438,7 @@ export default function PostDetailPage() {
               <Link
                 to={`/communities/${membershipRequired.community?.slug || membershipRequired.community?.id}`}
                 className="crowd-pill-btn"
-                style={{ textDecoration: 'none', padding: '12px 24px', fontSize: '0.95rem', background: '#FFFFFF' }}
+                style={{ textDecoration: 'none', padding: '12px 24px', fontSize: '0.95rem' }}
               >
                 <span>Visit Community Sphere</span>
               </Link>
@@ -521,7 +521,7 @@ export default function PostDetailPage() {
             <Clock size={12} />
             <span>{formattedDate}</span>
             {post.isEdited && (
-              <span className="mono-subtle" style={{ fontSize: '0.7rem', color: '#71717A', fontStyle: 'italic', marginLeft: 4 }}>
+              <span className="mono-subtle" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontStyle: 'italic', marginLeft: 4 }}>
                 (edited)
               </span>
             )}
@@ -531,7 +531,7 @@ export default function PostDetailPage() {
         {isEditingPost ? (
           <div style={{ marginBottom: 28, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
-              <label className="mono-subtle" style={{ display: 'block', marginBottom: 4, color: '#71717A' }}>TITLE</label>
+              <label className="mono-subtle" style={{ display: 'block', marginBottom: 4, color: 'var(--text-muted)' }}>TITLE</label>
               <input
                 type="text"
                 className="form-input"
@@ -542,7 +542,7 @@ export default function PostDetailPage() {
               />
             </div>
             <div>
-              <label className="mono-subtle" style={{ display: 'block', marginBottom: 4, color: '#71717A' }}>CONTENT</label>
+              <label className="mono-subtle" style={{ display: 'block', marginBottom: 4, color: 'var(--text-muted)' }}>CONTENT</label>
               <textarea
                 className="form-input"
                 value={editPostContent}
@@ -577,7 +577,7 @@ export default function PostDetailPage() {
               {post.title}
             </h1>
 
-            <div className="crowd-detail-body" style={{ fontSize: '1.025rem', lineHeight: 1.75, color: '#27272A', marginBottom: 28, whiteSpace: 'pre-line' }}>
+            <div className="crowd-detail-body" style={{ fontSize: '1.025rem', lineHeight: 1.75, color: 'var(--text-main)', marginBottom: 28, whiteSpace: 'pre-line' }}>
               {post.content}
             </div>
           </>
@@ -591,7 +591,7 @@ export default function PostDetailPage() {
               {post.author?.isRemoved && (
                 <span
                   className="crowd-tag-pill"
-                  style={{ fontSize: '0.65rem', padding: '1px 7px', background: '#F4F4F5', color: '#71717A', border: '1px solid #E4E4E7' }}
+                  style={{ fontSize: '0.65rem', padding: '1px 7px', background: 'var(--bg-card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}
                 >
                   Identity Removed
                 </span>
@@ -693,19 +693,19 @@ export default function PostDetailPage() {
                 width: 44,
                 height: 44,
                 borderRadius: '50%',
-                background: '#F4F4F5',
+                background: 'var(--bg-card-alt)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '0 auto 12px auto'
               }}
             >
-              <Lock size={20} style={{ color: '#141413' }} />
+              <Lock size={20} style={{ color: 'var(--text-main)' }} />
             </div>
             <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.2rem', marginBottom: 6 }}>
               Members Only Discussion
             </h4>
-            <p style={{ fontSize: '0.875rem', color: '#52525B', maxWidth: 460, margin: '0 auto 16px auto', lineHeight: 1.5 }}>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', maxWidth: 460, margin: '0 auto 16px auto', lineHeight: 1.5 }}>
               You must join c/{post.community.name} before you can write comments or replies to this question.
             </p>
             <button
@@ -721,7 +721,7 @@ export default function PostDetailPage() {
         ) : (
           <form onSubmit={handleReplySubmit} className="crowd-card" style={{ padding: '24px 28px' }}>
             <div className="form-group" style={{ marginBottom: 14 }}>
-              <label className="form-label" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: '#71717A' }}>
+              <label className="form-label" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
                 Add a Supportive Reply
               </label>
               <textarea
@@ -737,12 +737,12 @@ export default function PostDetailPage() {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-              <label className="checkbox-label" style={{ fontSize: '0.825rem', color: '#52525B', cursor: 'pointer' }}>
+              <label className="checkbox-label" style={{ fontSize: '0.825rem', color: 'var(--text-main)', cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={isExperienceShare}
                   onChange={(e) => setIsExperienceShare(e.target.checked)}
-                  style={{ accentColor: '#141413' }}
+                  style={{ accentColor: 'var(--primary)' }}
                 />
                 <span>I am speaking from personal firsthand experience</span>
               </label>
@@ -768,7 +768,7 @@ export default function PostDetailPage() {
         {replies.length === 0 ? (
           <div className="editorial-faq-frame crowd-empty-frame" style={{ padding: '48px 24px' }}>
             <span className="mono-subtle" style={{ display: 'block', marginBottom: 10 }}>EMPTY CIRCLE</span>
-            <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: '#141413', margin: '0 0 6px 0' }}>
+            <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: 'var(--text-main)', margin: '0 0 6px 0' }}>
               No replies yet.
             </h4>
             <p className="crowd-empty-desc" style={{ maxWidth: 440, margin: '0 auto' }}>
@@ -795,7 +795,7 @@ export default function PostDetailPage() {
                         {reply.author?.isRemoved && (
                           <span
                             className="crowd-tag-pill"
-                            style={{ fontSize: '0.65rem', padding: '1px 7px', background: '#F4F4F5', color: '#71717A', border: '1px solid #E4E4E7' }}
+                            style={{ fontSize: '0.65rem', padding: '1px 7px', background: 'var(--bg-card-alt)', color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}
                           >
                             Identity Removed
                           </span>
@@ -810,7 +810,7 @@ export default function PostDetailPage() {
                       )}
                       <span className="crowd-card-time">&bull; {rDate}</span>
                       {reply.isEdited && (
-                        <span className="mono-subtle" style={{ fontSize: '0.68rem', color: '#71717A', fontStyle: 'italic', marginLeft: 4 }}>
+                        <span className="mono-subtle" style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontStyle: 'italic', marginLeft: 4 }}>
                           (edited)
                         </span>
                       )}
@@ -911,7 +911,7 @@ export default function PostDetailPage() {
                       </div>
                     </div>
                   ) : (
-                    <div style={{ fontSize: '0.95rem', lineHeight: 1.65, color: '#3F3F46', whiteSpace: 'pre-line' }}>
+                    <div className="reply-content-body" style={{ fontSize: '0.95rem', lineHeight: 1.65, color: 'var(--text-main)', whiteSpace: 'pre-line' }}>
                       {reply.content}
                     </div>
                   )}
@@ -924,7 +924,7 @@ export default function PostDetailPage() {
 
       {/* Archival Assurance Callout */}
       <section className="crowd-footer-assurance">
-        <p className="mono-subtle" style={{ textAlign: 'center', letterSpacing: '0.12em', color: '#71717A' }}>
+        <p className="mono-subtle" style={{ textAlign: 'center', letterSpacing: '0.12em', color: 'var(--text-muted)' }}>
           ANON CROWD DISCUSSIONS • EPHEMERAL PEER NETWORK • ALL DATA ENCRYPTED
         </p>
       </section>

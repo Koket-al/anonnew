@@ -56,10 +56,10 @@ export default function CreateIdentityModal({
         onClick={(e) => e.stopPropagation()}
         style={{
           maxWidth: 520,
-          background: '#FFFFFF',
+          background: 'var(--bg-card)',
           borderRadius: 16,
-          border: '1px solid #141413',
-          boxShadow: '0 24px 48px -12px rgba(20, 20, 19, 0.28)',
+          border: '1px solid var(--border-light)',
+          boxShadow: '0 24px 48px -12px rgba(0, 0, 0, 0.28)',
           position: 'relative',
           margin: 'auto'
         }}
@@ -82,13 +82,13 @@ export default function CreateIdentityModal({
                 display: 'block',
                 fontSize: '0.68rem',
                 letterSpacing: '0.08em',
-                color: '#71717A',
+                color: 'var(--text-muted)',
                 marginBottom: 4
               }}
             >
               SEC // 00 · IDENTITY ON DEMAND
             </span>
-            <h2 id="create-identity-title" style={{ fontSize: '1.45rem', fontWeight: 700, margin: 0, color: '#141413' }}>
+            <h2 id="create-identity-title" style={{ fontSize: '1.45rem', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>
               Create Anonymous Identity
             </h2>
           </div>
@@ -111,30 +111,30 @@ export default function CreateIdentityModal({
             className="alert-banner alert-info"
             style={{
               marginBottom: 16,
-              background: '#F4F4F5',
-              border: '1px solid #E4E4E7',
+              background: 'var(--bg-card-alt)',
+              border: '1px solid var(--border-light)',
               borderRadius: 10,
               padding: '10px 14px',
               fontSize: '0.82rem',
-              color: '#27272A',
+              color: 'var(--text-main)',
               display: 'flex',
               alignItems: 'center',
               gap: 8
             }}
           >
-            <Shield size={15} style={{ flexShrink: 0, color: '#141413' }} />
+            <Shield size={15} style={{ flexShrink: 0, color: 'var(--text-main)' }} />
             <span>{reason}</span>
           </div>
         )}
 
-        <p style={{ fontSize: '0.85rem', color: '#71717A', lineHeight: 1.5, marginBottom: 20 }}>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 20 }}>
           ANON does not automatically assign identities to visitors. You hold full sovereignty: create a cryptographic persona when you are ready to speak, ask, or connect.
         </p>
 
         {/* Cryptographic pseudonym preview showcase */}
         <div
           style={{
-            background: '#FAFAFA',
+            background: 'var(--bg-card-alt)',
             border: '1px solid var(--border-light)',
             borderRadius: 12,
             padding: '14px 16px',
@@ -142,7 +142,7 @@ export default function CreateIdentityModal({
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <span className="mono-subtle" style={{ fontSize: '0.68rem', color: '#71717A' }}>
+            <span className="mono-subtle" style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
               PREVIEW CRYPTOGRAPHIC CODE //
             </span>
             <button
@@ -157,7 +157,7 @@ export default function CreateIdentityModal({
                 alignItems: 'center',
                 gap: 4,
                 fontSize: '0.72rem',
-                color: '#71717A',
+                color: 'var(--text-muted)',
                 fontFamily: 'var(--font-mono)'
               }}
               title="Generate another sample code"
@@ -175,7 +175,7 @@ export default function CreateIdentityModal({
                 fontSize: 'clamp(1rem, 3.8vw, 1.25rem)',
                 fontWeight: 700,
                 letterSpacing: '0.06em',
-                color: '#141413',
+                color: 'var(--text-main)',
                 wordBreak: 'break-all'
               }}
             >
@@ -198,7 +198,7 @@ export default function CreateIdentityModal({
 
         <form onSubmit={handleSubmit}>
           <div className="form-group" style={{ marginBottom: 22 }}>
-            <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, color: '#3F3F46' }}>
+            <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-main)' }}>
               Optional Personal Focus or Bio (Private & Anonymous)
             </label>
             <input
