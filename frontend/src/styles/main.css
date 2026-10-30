@@ -41,16 +41,16 @@
   --bg-subtle: #292825;
   --bg-muted: #34332F;
   
-  --primary: #F4F3EE;
+  --primary: #FFFFFF;
   --primary-hover: #FFFFFF;
   --primary-purple: #A070FF;
   
-  --text-main: #F4F3EE;
-  --text-muted: #A3A198;
-  --text-light: #7E7C74;
+  --text-main: #FFFFFF;
+  --text-muted: #F4F4F5;
+  --text-light: #E4E4E7;
   
   --border-light: #282724;
-  --border-dark: #F4F3EE;
+  --border-dark: #FFFFFF;
   --border-dashed: #3E3D37;
 }
 
@@ -3722,112 +3722,176 @@ a.link-underline {
 }
 
 /* ==========================================================================
-   Dark Theme: How ANON Works in 3 Steps Cards & Elements
+   Dark Theme: High Contrast Pure White Text on Black Backgrounds
    ========================================================================== */
+[data-theme="dark"] .steps-frame-title {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .steps-frame-desc {
+  color: #F4F4F5 !important;
+}
+
 [data-theme="dark"] .step-item {
   background: #141413 !important;
-  border-color: #282724 !important;
-  color: #F4F3EE !important;
+  border-color: #383734 !important;
+  color: #FFFFFF !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
 }
 
 [data-theme="dark"] .step-item:hover,
 [data-theme="dark"] .step-item:focus-within {
   background: #1C1B19 !important;
-  border-color: #F4F3EE !important;
-  box-shadow: 0 18px 38px -10px rgba(0, 0, 0, 0.65), 0 0 0 1px #F4F3EE !important;
+  border-color: #FFFFFF !important;
+  box-shadow: 0 18px 38px -10px rgba(0, 0, 0, 0.65), 0 0 0 1px #FFFFFF !important;
 }
 
 [data-theme="dark"] .step-item-num {
-  color: #F4F3EE !important;
+  color: #FFFFFF !important;
 }
 
 [data-theme="dark"] .step-item-badge {
-  background: #21201D !important;
-  border-color: #2E2D29 !important;
-  color: #A3A198 !important;
+  background: #252422 !important;
+  border-color: #4A4843 !important;
+  color: #FFFFFF !important;
+  font-weight: 600 !important;
 }
 
 [data-theme="dark"] .step-item:hover .step-item-badge,
 [data-theme="dark"] .step-item:focus-within .step-item-badge {
-  background: #2B2A26 !important;
-  border-color: #F4F3EE !important;
-  color: #F4F3EE !important;
+  background: #33322E !important;
+  border-color: #FFFFFF !important;
+  color: #FFFFFF !important;
 }
 
 [data-theme="dark"] .step-item-icon {
-  background: #21201D !important;
-  border-color: #2E2D29 !important;
-  color: #A3A198 !important;
+  background: #252422 !important;
+  border-color: #4A4843 !important;
+  color: #FFFFFF !important;
 }
 
 [data-theme="dark"] .step-item:hover .step-item-icon,
 [data-theme="dark"] .step-item:focus-within .step-item-icon {
-  background: #F4F3EE !important;
-  border-color: #F4F3EE !important;
+  background: #FFFFFF !important;
+  border-color: #FFFFFF !important;
   color: #141413 !important;
 }
 
 [data-theme="dark"] .step-item-title {
-  color: #F4F3EE !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
 }
 
 [data-theme="dark"] .step-item-desc {
-  color: #A3A198 !important;
+  color: #FFFFFF !important;
+  line-height: 1.7 !important;
 }
 
 [data-theme="dark"] .step-item:hover .step-item-desc,
 [data-theme="dark"] .step-item:focus-within .step-item-desc {
-  color: #F4F3EE !important;
+  color: #FFFFFF !important;
 }
 
 [data-theme="dark"] .step-lead {
-  color: #F4F3EE !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
 }
 
 [data-theme="dark"] .step-item-footer {
-  border-top-color: #282724 !important;
-  color: #A3A198 !important;
+  border-top-color: #383734 !important;
+  color: #FFFFFF !important;
 }
 
 [data-theme="dark"] .step-pill {
-  color: #A3A198 !important;
+  color: #FFFFFF !important;
 }
 
 [data-theme="dark"] .step-item:hover .step-pill,
 [data-theme="dark"] .step-item:focus-within .step-pill {
-  color: #F4F3EE !important;
+  color: #FFFFFF !important;
 }
 
 [data-theme="dark"] .step-dot {
-  color: #7E7C74 !important;
+  color: #FFFFFF !important;
 }
 
 [data-theme="dark"] .step-card-accent {
-  background: #F4F3EE !important;
+  background: #FFFFFF !important;
+}
+
+/* FAQ High-Contrast Pure White Text */
+[data-theme="dark"] .arch-faq-question-text {
+  color: #FFFFFF !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="dark"] .arch-faq-answer {
+  color: #FFFFFF !important;
+  line-height: 1.7 !important;
 }
 
 [data-theme="dark"] .faq-lead {
-  color: #F4F3EE !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="dark"] .arch-faq-num {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .arch-faq-badge {
+  color: #FFFFFF !important;
+  background: #252422 !important;
+  border-color: #4A4843 !important;
+}
+
+[data-theme="dark"] .arch-pill {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .arch-dot {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .arch-faq-icon-wrap {
+  color: #FFFFFF !important;
+  background: #252422 !important;
+  border-color: #4A4843 !important;
+}
+
+[data-theme="dark"] .arch-faq-icon-toggle {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .editorial-faq-title {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .editorial-faq-desc {
+  color: #F4F4F5 !important;
+}
+
+[data-theme="dark"] .faq-answer-text {
+  color: #FFFFFF !important;
 }
 
 [data-theme="dark"] .faq-filter-btn {
   background: #181716 !important;
-  border-color: #282724 !important;
-  color: #A3A198 !important;
+  border-color: #383734 !important;
+  color: #FFFFFF !important;
 }
 
 [data-theme="dark"] .faq-filter-btn:hover {
-  background: #21201D !important;
-  border-color: #F4F3EE !important;
-  color: #F4F3EE !important;
+  background: #252422 !important;
+  border-color: #FFFFFF !important;
+  color: #FFFFFF !important;
 }
 
 [data-theme="dark"] .faq-filter-btn.active {
-  background: #F4F3EE !important;
-  border-color: #F4F3EE !important;
+  background: #FFFFFF !important;
+  border-color: #FFFFFF !important;
   color: #141413 !important;
-  box-shadow: 0 4px 14px rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 4px 14px rgba(255, 255, 255, 0.15) !important;
 }
 
 
