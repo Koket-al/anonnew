@@ -4255,5 +4255,128 @@ a.link-underline {
   color: #F4F4F5 !important;
 }
 
+/* ==========================================================================
+   Identity Switcher Popover (Desktop & Dropdown)
+   ========================================================================== */
+.identity-popover-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 300px;
+  max-width: calc(100vw - 32px);
+  background: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-dark);
+  padding: 16px;
+  z-index: 1000;
+  color: var(--text-main);
+}
+
+[data-theme="dark"] .identity-popover-dropdown {
+  background: #181716 !important;
+  border-color: #383734 !important;
+  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.8) !important;
+  color: #FFFFFF !important;
+}
+
+.identity-popover-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #FAFAFA;
+  border: 1px solid var(--border-light);
+  color: var(--text-main);
+  transition: all 0.2s ease;
+}
+
+.identity-popover-item.current {
+  background: #F4F4F5;
+  border-color: var(--border-dark);
+}
+
+[data-theme="dark"] .identity-popover-item {
+  background: #21201D !important;
+  border-color: #383734 !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .identity-popover-item.current {
+  background: #292825 !important;
+  border-color: #FFFFFF !important;
+  color: #FFFFFF !important;
+}
+
+/* ==========================================================================
+   Alert Banners: Dark & Light Mode Theme Support
+   (Important Clinical Notice, Golden Rule, Disclaimers, Warnings)
+   ========================================================================== */
+[data-theme="white"] .alert-info,
+:root:not([data-theme="dark"]) .alert-info {
+  background: #F4F3EE !important;
+  border-color: var(--border-light) !important;
+  color: #141413 !important;
+}
+
+[data-theme="white"] .alert-info *,
+:root:not([data-theme="dark"]) .alert-info * {
+  color: #141413 !important;
+}
+
+[data-theme="dark"] .alert-banner {
+  background: #181716 !important;
+  border-color: #383734 !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .alert-banner * {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .alert-info {
+  background: #181716 !important;
+  border-color: #383734 !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .alert-info * {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .alert-warning {
+  background: rgba(217, 119, 6, 0.15) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+  color: #FBBF24 !important;
+}
+
+[data-theme="dark"] .alert-warning * {
+  color: #FBBF24 !important;
+}
+
+[data-theme="dark"] .alert-success {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  color: #34D399 !important;
+}
+
+[data-theme="dark"] .alert-success * {
+  color: #34D399 !important;
+}
+
+[data-theme="dark"] .alert-danger,
+[data-theme="dark"] .alert-error {
+  background: rgba(239, 68, 68, 0.15) !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+  color: #F87171 !important;
+}
+
+[data-theme="dark"] .alert-danger *,
+[data-theme="dark"] .alert-error * {
+  color: #F87171 !important;
+}
+
+
 
 

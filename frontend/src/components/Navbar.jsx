@@ -302,27 +302,13 @@ export default function Navbar() {
 
                 {/* Identity Popover Dropdown (for desktop) */}
                 {identityDropdownOpen && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 'calc(100% + 8px)',
-                      right: 0,
-                      width: 300,
-                      maxWidth: 'calc(100vw - 32px)',
-                      background: '#FFFFFF',
-                      borderRadius: 16,
-                      boxShadow: '0 16px 36px -8px rgba(0,0,0,0.25)',
-                      border: '1px solid #141413',
-                      padding: 16,
-                      zIndex: 1000
-                    }}
-                  >
+                  <div className="identity-popover-dropdown">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderBottom: '1px solid var(--border-light)', paddingBottom: 8 }}>
                       <div>
-                        <span className="mono-subtle" style={{ fontSize: '0.65rem', color: '#71717A', display: 'block' }}>
+                        <span className="mono-subtle" style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block' }}>
                           CRYPTOGRAPHIC PERSONAS
                         </span>
-                        <span style={{ fontWeight: 700, fontSize: '0.875rem', color: '#141413' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-main)' }}>
                           Identities ({identities.length}/{maxIdentities})
                         </span>
                       </div>
@@ -331,7 +317,7 @@ export default function Navbar() {
                       </span>
                     </div>
 
-                    <p style={{ fontSize: '0.75rem', color: '#71717A', marginBottom: 12, lineHeight: 1.4 }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.4 }}>
                       Switch personas anytime. Identities persist on this device until you consciously remove them.
                     </p>
 
@@ -342,23 +328,15 @@ export default function Navbar() {
                         return (
                           <div
                             key={item.id}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              padding: '8px 10px',
-                              borderRadius: 10,
-                              background: isCurrent ? '#F4F4F5' : '#FAFAFA',
-                              border: isCurrent ? '1px solid #141413' : '1px solid var(--border-light)'
-                            }}
+                            className={`identity-popover-item ${isCurrent ? 'current' : ''}`}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                               <span className="identity-dot" style={{ width: 7, height: 7, flexShrink: 0 }} />
-                              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {item.username}
                               </span>
                               {isCurrent && (
-                                <span style={{ fontSize: '0.65rem', color: '#16A34A', fontWeight: 700, flexShrink: 0 }}>
+                                <span style={{ fontSize: '0.65rem', color: '#10B981', fontWeight: 700, flexShrink: 0 }}>
                                   Active
                                 </span>
                               )}
@@ -383,7 +361,7 @@ export default function Navbar() {
                                   background: 'transparent',
                                   border: 'none',
                                   cursor: 'pointer',
-                                  color: '#DC2626',
+                                  color: '#EF4444',
                                   padding: 4,
                                   display: 'flex',
                                   alignItems: 'center'
@@ -415,7 +393,7 @@ export default function Navbar() {
                         <Link
                           to="/settings"
                           onClick={() => setIdentityDropdownOpen(false)}
-                          style={{ color: '#141413', textDecoration: 'underline', fontWeight: 600 }}
+                          style={{ color: 'var(--text-main)', textDecoration: 'underline', fontWeight: 600 }}
                         >
                           Identity Settings & Privacy →
                         </Link>
@@ -428,7 +406,7 @@ export default function Navbar() {
                           style={{
                             background: 'transparent',
                             border: 'none',
-                            color: '#DC2626',
+                            color: '#EF4444',
                             cursor: 'pointer',
                             fontSize: '0.75rem',
                             display: 'inline-flex',
