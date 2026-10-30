@@ -986,7 +986,7 @@ a.link-underline {
   padding: 0 14px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border-light);
-  background: #FFFFFF;
+  background: var(--bg-card);
   font-size: 0.775rem;
   font-weight: 500;
   color: var(--text-main);
@@ -1015,7 +1015,7 @@ a.link-underline {
 
 .secure-comm-desc {
   font-size: 0.95rem;
-  color: #55544E;
+  color: var(--text-muted);
   line-height: 1.6;
   margin-bottom: 24px;
   max-width: 400px;
@@ -1047,7 +1047,7 @@ a.link-underline {
     margin-bottom: -10px;
   }
   .secure-comm-center {
-    background: #FFFFFF;
+    background: var(--bg-card);
     border: 1px solid var(--border-light);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
     margin-top: -24px;
@@ -3616,10 +3616,68 @@ a.link-underline {
 [data-theme="dark"] .report-modal-content,
 [data-theme="dark"] .footer-framed-card,
 [data-theme="dark"] .confirm-dialog-card,
-[data-theme="dark"] .incoming-toast-banner {
+[data-theme="dark"] .incoming-toast-banner,
+[data-theme="dark"] .secure-comm-center,
+[data-theme="dark"] .bottom-cta-box {
   background: var(--bg-card);
   border-color: var(--border-light);
   color: var(--text-main);
+}
+
+/* Mobile Hero Card: Dark Mode Pure Black & High Contrast */
+@media (max-width: 820px) {
+  [data-theme="dark"] .secure-comm-center {
+    background: #181716 !important;
+    border-color: #383734 !important;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6) !important;
+    color: #FFFFFF !important;
+  }
+}
+
+[data-theme="dark"] .secure-comm-center {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .secure-comm-title {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .secure-comm-expressive {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .secure-comm-desc {
+  color: #E4E4E7 !important;
+}
+
+[data-theme="dark"] .secure-comm-badge {
+  background: #252422 !important;
+  border-color: #4A4843 !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .home-theme-toggle-pill {
+  background: #181716 !important;
+  border-color: #383734 !important;
+}
+
+[data-theme="dark"] .home-theme-toggle-btn {
+  color: #A1A1AA !important;
+}
+
+[data-theme="dark"] .home-theme-toggle-btn.active {
+  background: #F4F3EE !important;
+  color: #141413 !important;
+}
+
+[data-theme="dark"] .bottom-cta-box {
+  background: #181716 !important;
+  border-color: #383734 !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .bottom-cta-title {
+  color: #FFFFFF !important;
 }
 
 [data-theme="dark"] .arch-faq-item {
