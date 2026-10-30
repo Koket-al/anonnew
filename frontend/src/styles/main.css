@@ -4377,6 +4377,238 @@ a.link-underline {
   color: #F87171 !important;
 }
 
+/* ==========================================================================
+   Settings & Privacy: Identity Slots Grid & Architectural Cards
+   ========================================================================== */
+.identity-slot-card {
+  position: relative;
+  background: #FAF9F6;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 140px;
+  color: var(--text-main);
+  transition: all 0.25s ease;
+}
+
+.identity-slot-card.current {
+  background: #FFFFFF;
+  border: 2px solid var(--border-dark);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.identity-slot-card.empty {
+  background: #FAFAFA;
+  border: 1px dashed var(--border-light);
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.identity-slot-username {
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-main);
+}
+
+.identity-slot-label {
+  color: var(--text-muted);
+}
+
+.identity-slot-card.current .identity-slot-label {
+  color: var(--text-main);
+}
+
+.identity-slot-stored-label {
+  color: var(--text-muted);
+}
+
+.identity-slot-empty-text {
+  color: var(--text-muted);
+}
+
+.identity-slot-date {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.identity-slot-active-indicator {
+  color: #16A34A;
+}
+
+.identity-slot-btn-remove {
+  color: #DC2626 !important;
+  border-color: #FCA5A5 !important;
+}
+
+/* Dark Mode for Identity Slots */
+[data-theme="dark"] .identity-slot-card {
+  background: #181716 !important;
+  border-color: #383734 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45) !important;
+}
+
+[data-theme="dark"] .identity-slot-card.current {
+  background: #21201D !important;
+  border-color: #FFFFFF !important;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.7), 0 0 0 1px #FFFFFF !important;
+}
+
+[data-theme="dark"] .identity-slot-card.empty {
+  background: #141413 !important;
+  border: 1px dashed #383734 !important;
+  color: #A1A1AA !important;
+}
+
+[data-theme="dark"] .identity-slot-username {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .identity-slot-label {
+  color: #A1A1AA !important;
+}
+
+[data-theme="dark"] .identity-slot-card.current .identity-slot-label {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .identity-slot-stored-label {
+  color: #A1A1AA !important;
+}
+
+[data-theme="dark"] .identity-slot-empty-text {
+  color: #D4D4D8 !important;
+}
+
+[data-theme="dark"] .identity-slot-date {
+  color: #A1A1AA !important;
+}
+
+[data-theme="dark"] .identity-slot-active-indicator {
+  color: #34D399 !important;
+}
+
+[data-theme="dark"] .identity-slot-btn-remove {
+  color: #EF4444 !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+}
+
+[data-theme="dark"] .identity-slot-btn-remove:hover {
+  background: rgba(239, 68, 68, 0.25) !important;
+  border-color: #EF4444 !important;
+  color: #FFFFFF !important;
+}
+
+/* Settings Notifications Mute Button */
+.settings-mute-btn {
+  color: var(--text-main);
+  background: var(--bg-card);
+  border-color: var(--border-light);
+}
+
+.settings-mute-btn.muted {
+  color: #DC2626 !important;
+  border-color: #FECACA !important;
+  background: #FEF2F2 !important;
+}
+
+[data-theme="dark"] .settings-mute-btn {
+  background: #181716 !important;
+  border-color: #383734 !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .settings-mute-btn.muted {
+  background: rgba(220, 38, 38, 0.15) !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  color: #F87171 !important;
+}
+
+/* Settings Architecture & Manifesto Cards */
+.settings-info-card {
+  background: #FAF9F6;
+  border: 1px solid #EAE6DC;
+  padding: 22px;
+  border-radius: 14px;
+}
+
+.settings-info-card-title {
+  color: #141413;
+}
+
+.settings-info-card-desc {
+  color: #52525B;
+}
+
+[data-theme="dark"] .settings-info-card {
+  background: #181716 !important;
+  border-color: #383734 !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .settings-info-card-title {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .settings-info-card-desc {
+  color: #E4E4E7 !important;
+}
+
+/* Settings Boundary Cards */
+.settings-boundary-card {
+  padding: 22px;
+  border-radius: 14px;
+}
+
+.settings-boundary-card.never {
+  background: #F8FAF8;
+  border: 1px solid #DCE6DD;
+}
+
+.settings-boundary-card.store {
+  background: #FAF9F6;
+  border: 1px solid #EAE6DC;
+}
+
+.settings-boundary-never-title {
+  color: #1B5E20;
+}
+
+.settings-boundary-store-title {
+  color: #795516;
+}
+
+.settings-boundary-card ul {
+  color: #52525B;
+}
+
+[data-theme="dark"] .settings-boundary-card {
+  background: #181716 !important;
+  border-color: #383734 !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .settings-boundary-never-title {
+  color: #34D399 !important;
+}
+
+[data-theme="dark"] .settings-boundary-store-title {
+  color: #FBBF24 !important;
+}
+
+[data-theme="dark"] .settings-boundary-card ul,
+[data-theme="dark"] .settings-boundary-card li {
+  color: #E4E4E7 !important;
+}
+
+
 
 
 

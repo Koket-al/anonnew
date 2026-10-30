@@ -162,7 +162,7 @@ export default function SettingsPrivacyPage() {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 20 }}>
           <div>
-            <span className="mono-subtle" style={{ display: 'block', marginBottom: 4, color: '#71717A' }}>
+            <span className="mono-subtle" style={{ display: 'block', marginBottom: 4, color: 'var(--text-muted)' }}>
               CRYPTOGRAPHIC IDENTITY SLOTS //
             </span>
             <h2 className="crowd-card-title" style={{ fontSize: '1.5rem', margin: 0 }}>
@@ -185,8 +185,7 @@ export default function SettingsPrivacyPage() {
             {isAuthenticated && (
               <button
                 type="button"
-                className="crowd-pill-btn"
-                style={{ color: '#DC2626', borderColor: '#FCA5A5' }}
+                className="crowd-pill-btn identity-slot-btn-remove"
                 onClick={handleRemoveActiveIdentity}
                 title="Consciously remove your active persona while preserving your other identities"
               >
@@ -208,23 +207,12 @@ export default function SettingsPrivacyPage() {
               return (
                 <div
                   key={`empty-${index}`}
-                  style={{
-                    border: '1px dashed var(--border-light)',
-                    borderRadius: 14,
-                    padding: '20px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: '#FAFAFA',
-                    minHeight: 130,
-                    textAlign: 'center'
-                  }}
+                  className="identity-slot-card empty"
                 >
-                  <span className="mono-subtle" style={{ color: '#A1A1AA', fontSize: '0.72rem', marginBottom: 6 }}>
+                  <span className="mono-subtle identity-slot-label" style={{ fontSize: '0.72rem', marginBottom: 6 }}>
                     SLOT 0{index + 1} • AVAILABLE
                   </span>
-                  <div style={{ fontSize: '0.85rem', color: '#71717A', marginBottom: 12 }}>
+                  <div className="identity-slot-empty-text" style={{ fontSize: '0.85rem', marginBottom: 12 }}>
                     Unused identity slot
                   </div>
                   <button
@@ -245,21 +233,11 @@ export default function SettingsPrivacyPage() {
             return (
               <div
                 key={slot.id}
-                style={{
-                  border: isCurrent ? '2px solid #141413' : '1px solid var(--border-light)',
-                  borderRadius: 14,
-                  padding: '20px',
-                  background: isCurrent ? '#FFFFFF' : '#FAF9F6',
-                  boxShadow: isCurrent ? '0 4px 16px rgba(0,0,0,0.06)' : 'none',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  minHeight: 130
-                }}
+                className={`identity-slot-card ${isCurrent ? 'current' : ''}`}
               >
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <span className="mono-subtle" style={{ fontSize: '0.68rem', color: isCurrent ? '#141413' : '#71717A', fontWeight: 600 }}>
+                    <span className="mono-subtle identity-slot-label" style={{ fontSize: '0.68rem', fontWeight: 600 }}>
                       SLOT 0{index + 1} //
                     </span>
                     {isCurrent ? (
@@ -267,7 +245,7 @@ export default function SettingsPrivacyPage() {
                         Active Persona
                       </span>
                     ) : (
-                      <span className="mono-subtle" style={{ fontSize: '0.65rem', color: '#71717A' }}>
+                      <span className="mono-subtle identity-slot-stored-label" style={{ fontSize: '0.65rem' }}>
                         Stored Persona
                       </span>
                     )}
@@ -275,19 +253,19 @@ export default function SettingsPrivacyPage() {
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <span className="identity-dot" style={{ width: 8, height: 8 }} />
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '1.25rem', fontWeight: 700, letterSpacing: '0.04em' }}>
+                    <span className="identity-slot-username">
                       {slot.username}
                     </span>
                   </div>
 
-                  <div className="mono-subtle" style={{ fontSize: '0.7rem', color: '#71717A' }}>
+                  <div className="mono-subtle identity-slot-date">
                     CREATED: {new Date(slot.createdAt).toLocaleDateString()}
                   </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: 8, marginTop: 16, alignItems: 'center', justifyContent: 'space-between' }}>
                   {isCurrent ? (
-                    <span style={{ fontSize: '0.78rem', color: '#16A34A', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span className="identity-slot-active-indicator" style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
                       <Check size={14} /> Currently in Use
                     </span>
                   ) : (
@@ -304,10 +282,8 @@ export default function SettingsPrivacyPage() {
                   <button
                     type="button"
                     onClick={() => setDeleteModalState({ isOpen: true, targetIdentity: slot })}
-                    className="crowd-pill-btn"
+                    className="crowd-pill-btn identity-slot-btn-remove"
                     style={{
-                      color: '#DC2626',
-                      borderColor: '#FCA5A5',
                       padding: '4px 10px',
                       fontSize: '0.75rem'
                     }}
@@ -329,30 +305,27 @@ export default function SettingsPrivacyPage() {
       <section className="crowd-card" style={{ padding: '26px 32px', marginBottom: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
           <div>
-            <span className="mono-subtle" style={{ color: '#71717A', display: 'block', fontSize: '0.72rem', marginBottom: 4 }}>
+            <span className="mono-subtle" style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem', marginBottom: 4 }}>
               NOTIFICATIONS & ALERT PREFERENCES //
             </span>
             <h3 className="crowd-card-title" style={{ fontSize: '1.25rem', margin: 0 }}>
               Real-Time Community & Discussion Notifications
             </h3>
-            <p style={{ color: '#71717A', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
               Control whether incoming question alerts, replies, and connection requests trigger in-app banners.
             </p>
           </div>
 
           <button
             type="button"
-            className="crowd-pill-btn"
+            className={`crowd-pill-btn settings-mute-btn ${isMuted ? 'muted' : ''}`}
             onClick={toggleMute}
             style={{
               padding: '8px 18px',
               fontSize: '0.85rem',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 8,
-              color: isMuted ? '#DC2626' : '#141413',
-              borderColor: isMuted ? '#FECACA' : 'rgba(0,0,0,0.14)',
-              background: isMuted ? '#FEF2F2' : '#FFFFFF'
+              gap: 8
             }}
           >
             {isMuted ? <BellOff size={15} /> : <Bell size={15} />}
@@ -365,7 +338,7 @@ export default function SettingsPrivacyPage() {
           3. Educational Manifesto / Principles
           ==================================================================== */}
       <section className="crowd-card" style={{ padding: '32px 36px' }}>
-        <span className="mono-subtle" style={{ display: 'block', marginBottom: 6, color: '#71717A' }}>
+        <span className="mono-subtle" style={{ display: 'block', marginBottom: 6, color: 'var(--text-muted)' }}>
           PLATFORM ARCHITECTURE //
         </span>
         <h2 className="crowd-card-title" style={{ fontSize: '1.5rem', marginBottom: 14 }}>
@@ -377,45 +350,45 @@ export default function SettingsPrivacyPage() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
           {/* Card 1: Cryptographic Pseudonyms */}
-          <div style={{ background: '#FAF9F6', border: '1px solid #EAE6DC', padding: 22, borderRadius: 14 }}>
-            <div style={{ fontWeight: 700, color: '#141413', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem' }}>
+          <div className="settings-info-card">
+            <div className="settings-info-card-title" style={{ fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem' }}>
               <KeyRound size={16} />
               <span>1. Cryptographic String Format</span>
             </div>
-            <p style={{ fontSize: '0.85rem', color: '#52525B', lineHeight: 1.6, margin: 0 }}>
+            <p className="settings-info-card-desc" style={{ fontSize: '0.85rem', lineHeight: 1.6, margin: 0 }}>
               Identities never look like dictionary usernames or personal names. Every pseudonym is a high-entropy string generated by a secure crypto random function (such as <code style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>Ab1z4Qt</code>).
             </p>
           </div>
 
           {/* Card 2: 5 Persistent Identities */}
-          <div style={{ background: '#FAF9F6', border: '1px solid #EAE6DC', padding: 22, borderRadius: 14 }}>
-            <div style={{ fontWeight: 700, color: '#141413', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem' }}>
+          <div className="settings-info-card">
+            <div className="settings-info-card-title" style={{ fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem' }}>
               <Layers size={16} />
               <span>2. Up to 5 Concurrent Identities</span>
             </div>
-            <p style={{ fontSize: '0.85rem', color: '#52525B', lineHeight: 1.6, margin: 0 }}>
+            <p className="settings-info-card-desc" style={{ fontSize: '0.85rem', lineHeight: 1.6, margin: 0 }}>
               Each visitor is eligible to create and maintain up to 5 concurrent identities. You can dedicate one identity to academic stress, one to relationships, and another to peer listening. Switching never removes previous personas.
             </p>
           </div>
 
           {/* Card 3: Conscious Removal & Content Choice */}
-          <div style={{ background: '#FAF9F6', border: '1px solid #EAE6DC', padding: 22, borderRadius: 14 }}>
-            <div style={{ fontWeight: 700, color: '#141413', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem' }}>
+          <div className="settings-info-card">
+            <div className="settings-info-card-title" style={{ fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem' }}>
               <Shield size={16} />
               <span>3. Conscious Removal & Message Options</span>
             </div>
-            <p style={{ fontSize: '0.85rem', color: '#52525B', lineHeight: 1.6, margin: 0 }}>
+            <p className="settings-info-card-desc" style={{ fontSize: '0.85rem', lineHeight: 1.6, margin: 0 }}>
               Identities stay permanently unless you consciously remove them. When removing an identity, you are asked whether to <strong>leave your messages for others</strong> to help peers or <strong>purge all your messages</strong> completely.
             </p>
           </div>
 
           {/* Card 4: Standalone Message Deletion */}
-          <div style={{ background: '#FAF9F6', border: '1px solid #EAE6DC', padding: 22, borderRadius: 14 }}>
-            <div style={{ fontWeight: 700, color: '#141413', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem' }}>
+          <div className="settings-info-card">
+            <div className="settings-info-card-title" style={{ fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem' }}>
               <MessageSquare size={16} />
               <span>4. Standalone Message Deletion</span>
             </div>
-            <p style={{ fontSize: '0.85rem', color: '#52525B', lineHeight: 1.6, margin: 0 }}>
+            <p className="settings-info-card-desc" style={{ fontSize: '0.85rem', lineHeight: 1.6, margin: 0 }}>
               You have complete sovereignty over your contributions. You can delete any individual question, reply, or private message at any time without needing to delete your identity.
             </p>
           </div>
@@ -426,7 +399,7 @@ export default function SettingsPrivacyPage() {
           4. Verifiable Engineering Boundary
           ==================================================================== */}
       <section className="crowd-card" style={{ padding: '32px 36px' }}>
-        <span className="mono-subtle" style={{ display: 'block', marginBottom: 6, color: '#71717A' }}>
+        <span className="mono-subtle" style={{ display: 'block', marginBottom: 6, color: 'var(--text-muted)' }}>
           PRIVACY BOUNDARY //
         </span>
         <h2 className="crowd-card-title" style={{ fontSize: '1.5rem', marginBottom: 12 }}>
@@ -437,12 +410,12 @@ export default function SettingsPrivacyPage() {
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
-          <div style={{ background: '#F8FAF8', border: '1px solid #DCE6DD', padding: 22, borderRadius: 14 }}>
-            <div style={{ fontWeight: 600, color: '#1B5E20', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem' }}>
+          <div className="settings-boundary-card never">
+            <div className="settings-boundary-never-title" style={{ fontWeight: 600, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem' }}>
               <CheckCircle size={16} />
               <span>What We NEVER Collect</span>
             </div>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.85rem', color: '#52525B', lineHeight: 1.5 }}>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.85rem', lineHeight: 1.5 }}>
               <li>&bull; Real names, emails, or phone numbers</li>
               <li>&bull; GPS coordinates, Wi-Fi location, or device telemetry</li>
               <li>&bull; IP address logs or tracking cookies</li>
@@ -450,12 +423,12 @@ export default function SettingsPrivacyPage() {
             </ul>
           </div>
 
-          <div style={{ background: '#FAF9F6', border: '1px solid #EAE6DC', padding: 22, borderRadius: 14 }}>
-            <div style={{ fontWeight: 600, color: '#795516', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem' }}>
+          <div className="settings-boundary-card store">
+            <div className="settings-boundary-store-title" style={{ fontWeight: 600, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem' }}>
               <Server size={16} />
               <span>What We Store in Encrypted DB</span>
             </div>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.85rem', color: '#52525B', lineHeight: 1.5 }}>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.85rem', lineHeight: 1.5 }}>
               <li>&bull; SHA-256 hashed ephemeral session token</li>
               <li>&bull; Cryptographic identity codes (e.g. <code style={{ fontFamily: 'var(--font-mono)' }}>Ab1z4Qt</code>)</li>
               <li>&bull; Discussion questions and replies (editable & deletable)</li>
